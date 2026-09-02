@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>{{ book.title }}</h2>
+                <div>
+                    <a href="{{ url_for('books') }}" class="btn btn-secondary">بازگشت به فهرست</a>
+                    <a href="{{ url_for('download_book', book_id=book.id) }}" class="btn btn-primary">دانلود کتاب</a>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="ratio ratio-16x9">
+                        <div style="position: relative; width: 100%; height: 100%;">
+                            <div id="pdf-container" style="width: 100%; height: 100%; position: relative;">
+                                <div id="pdf-viewer" style="width: 100%; height: 100%; border: none;"></div>
+                                <div class="pdf-controls" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 8px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                                    <button id="prevPage" class="btn btn-primary" title="صفحه قبل">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                    <span class="px-2 d-flex align-items-center">
+                                        صفحه <span id="page_num">1</span> از <span id="page_count">0</span>
+                                    </span>
+                                    <button id="nextPage" class="btn btn-primary" title="صفحه بعد">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </button>
+                                    <button id="zoomInBtn" class="btn btn-outline-secondary" title="بزرگ‌نمایی">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                    <button id="zoomOutBtn" class="btn btn-outline-secondary" title="کوچک‌نمایی">
+                                        <i class="bi bi-zoom-out"></i>
+                                    </button>
+                                    <button id="fitWidthBtn" class="btn btn-outline-secondary" title="تنظیم به اندازه عرض">
+                                        <i class="bi bi-arrows-angle-expand"></i>
+                                    </button>
+                                </div>
+                                <button id="bookmarkBtn" class="bookmark-btn" title="نشانک">
+                                    <i class="bi bi-bookmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="toast-container">
+            <div id="toast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body" id="toast-message">
+                        نشانک با موفقیت ذخیره شد
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+<style>
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    #pdf-container {
+        position: relative;
+        width: 100%;
+        height: 80vh;
+        overflow: auto;
+    }
+    
+    .bookmark-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        z-index: 10;
+        background: rgba(13, 110, 253, 0.9);
+        color: white;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+    
+    .bookmark-btn:hover {
+        transform: scale(1.1);
+        background: #0d6efd;
+    }
+    
+    .bookmark-btn i {
+        font-size: 1.2rem;
+    }
+    
+    .page-container {
+        margin-bottom: 20px;
+        position: relative;
+        display: inline-block;
+    }
+    
+    .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        font-size: 1.2rem;
+        color: #666;
+    }
+    
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+    }
+    
+    .pdf-controls .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .pdf-controls .btn i {
+        font-size: 1.2rem;
+    }
+    
+    #pdf-viewer canvas {
+        display: block;
+        margin: 0 auto;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+</style>
+
+<!-- PDF.js -->
+    <script src="{{ url_for('static', filename='js/pdf.min.js') }}"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = '{{ url_for('static', filename='js/pdf.worker.min.js') }}';</script>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bookmarkBtn = document.getElementById('bookmarkBtn');
+            const addBookmarkBtn = document.getElementById('addBookmarkBtn');
+            const pdfViewer = document.getElementById('pdfViewer');
+            const toastEl = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            let isBookmarked = false;
+            let currentBookmarkId = null;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            // Check if book is already bookmarked
+            async function checkBookmarkStatus() {
+                try {
+                    const response = await fetch(`/get_bookmarks/{{ book.id }}`);
+                    const data = await response.json();
+                    const existing = (data.bookmarks || []).find(b => b.page === 1);
+                    isBookmarked = !!existing;
+                    currentBookmarkId = existing ? existing.id : null;
+                    updateBookmarkButton();
+                } catch (error) {
+                    console.error('Error checking bookmark status:', error);
+                }
+            }
+
+            // Update bookmark button appearance
+            function updateBookmarkButton() {
+                const icon = bookmarkBtn.querySelector('i');
+                if (isBookmarked) {
+                    bookmarkBtn.classList.remove('btn-warning');
+                    bookmarkBtn.classList.add('btn-secondary');
+                    icon.classList.remove('bi-bookmark');
+                    icon.classList.add('bi-bookmark-check-fill');
+                } else {
+                    bookmarkBtn.classList.remove('btn-secondary');
+                    bookmarkBtn.classList.add('btn-warning');
+                    icon.classList.remove('bi-bookmark-check-fill');
+                    icon.classList.add('bi-bookmark');
+                }
+            }
+
+            // Toggle bookmark
+            async function toggleBookmark() {
+                try {
+                    const response = await fetch(`/toggle_bookmark/{{ book.id }}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            page: 1,
+                            bookmark_id: currentBookmarkId,
+                            action: isBookmarked ? 'remove' : 'add'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        isBookmarked = data.is_bookmarked;
+                        currentBookmarkId = data.bookmark_id || null;
+                        updateBookmarkButton();
+                        
+                        // Show toast message
+                        toastMessage.textContent = isBookmarked 
+                            ? 'کتاب به نشانک‌ها اضافه شد' 
+                            : 'کتاب از نشانک‌ها حذف شد';
+                        toast.show();
+                    }
+                } catch (error) {
+                    console.error('Error toggling bookmark:', error);
+                    toastMessage.textContent = 'خطا در ذخیره‌سازی نشانک';
+                    toast.show();
+                }
+            }
+
+            // PDF.js Configuration
+            const url = "{{ url_for('static', filename='books/' + book.file_path) }}";
+            let pdfDoc = null,
+                pageNum = 1,
+                pageRendering = false,
+                pageNumPending = null,
+                scale = 1.0,
+                maxScale = 3.0,
+                minScale = 0.5,
+                scaleStep = 0.25;
+
+            // DOM Elements
+            const pdfContainer = document.getElementById('pdf-viewer');
+            const pageNumElement = document.getElementById('page_num');
+            const pageCountElement = document.getElementById('page_count');
+            const prevPageBtn = document.getElementById('prevPage');
+            const nextPageBtn = document.getElementById('nextPage');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const fitWidthBtn = document.getElementById('fitWidthBtn');
+
+            // Initialize PDF
+            pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                pageCountElement.textContent = pdf.numPages;
+                
+                // Initial/first page rendering
+                renderPage(pageNum);
+                
+                // Update button states
+                updatePagerButtons();
+            }).catch(function(error) {
+                console.error('Error loading PDF:', error);
+                pdfContainer.innerHTML = '<div class="alert alert-danger">خطا در بارگذاری سند. لطفاً دوباره تلاش کنید.</div>';
+            });
+
+            // Page Rendering
+            function renderPage(num) {
+                pageRendering = true;
+                
+                // Show loading message
+                pdfContainer.innerHTML = '<div class="loading">در حال بارگذاری صفحه ' + num + '...</div>';
+                
+                // Fetch the page
+                pdfDoc.getPage(num).then(function(page) {
+                    const viewport = page.getViewport({ scale: scale });
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    
+                    // Set canvas dimensions
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    // Create page container
+                    const pageContainer = document.createElement('div');
+                    pageContainer.className = 'page-container';
+                    pageContainer.style.width = viewport.width + 'px';
+                    pageContainer.style.height = viewport.height + 'px';
+                    
+                    // Add page number
+                    const pageNumber = document.createElement('div');
+                    pageNumber.className = 'page-number';
+                    pageNumber.textContent = num;
+                    
+                    // Clear previous content and add new page
+                    pdfContainer.innerHTML = '';
+                    pageContainer.appendChild(canvas);
+                    pageContainer.appendChild(pageNumber);
+                    pdfContainer.appendChild(pageContainer);
+                    
+                    // Render PDF page
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: viewport
+                    };
+                    
+                    const renderTask = page.render(renderContext);
+                    
+                    // Update page number
+                    pageNumElement.textContent = num;
+                    
+                    // Update URL hash for deep linking
+                    window.location.hash = 'page=' + num;
+                    
+                    renderTask.promise.then(function() {
+                        pageRendering = false;
+                        if (pageNumPending !== null) {
+                            // New page rendering is pending
+                            renderPage(pageNumPending);
+                            pageNumPending = null;
+                        }
+                    });
+                });
+            }
+            
+            // Queue rendering of the page
+            function queueRenderPage(num) {
+                if (pageRendering) {
+                    pageNumPending = num;
+                } else {
+                    renderPage(num);
+                }
+            }
+            
+            // Previous Page
+            function onPrevPage() {
+                if (pageNum <= 1) {
+                    return;
+                }
+                pageNum--;
+                queueRenderPage(pageNum);
+                updatePagerButtons();
+            }
+            
+            // Next Page
+            function onNextPage() {
+                if (pageNum >= pdfDoc.numPages) {
+                    return;
+                }
+                pageNum++;
+                queueRenderPage(pageNum);
+                updatePagerButtons();
+            }
+            
+            // Update pager buttons state
+            function updatePagerButtons() {
+                prevPageBtn.disabled = (pageNum <= 1);
+                nextPageBtn.disabled = (pageNum >= pdfDoc.numPages);
+            }
+            
+            // Zoom In
+            function zoomIn() {
+                if (scale >= maxScale) return;
+                scale += scaleStep;
+                renderPage(pageNum);
+            }
+            
+            // Zoom Out
+            function zoomOut() {
+                if (scale <= minScale) return;
+                scale -= scaleStep;
+                renderPage(pageNum);
+            }
+            
+            // Fit to Width
+            function fitToWidth() {
+                // This is a simplified version - in a real app, you'd calculate the proper scale
+                scale = 1.0;
+                renderPage(pageNum);
+            }
+            
+            // Initialize PDF viewer
+            // Check initial bookmark status
+            checkBookmarkStatus();
+            
+            // Add event listeners
+            prevPageBtn.addEventListener('click', onPrevPage);
+            nextPageBtn.addEventListener('click', onNextPage);
+            zoomInBtn.addEventListener('click', zoomIn);
+            zoomOutBtn.addEventListener('click', zoomOut);
+            fitWidthBtn.addEventListener('click', fitToWidth);
+            
+            // Add keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight' || e.key === 'Right') {
+                    onPrevPage();
+                } else if (e.key === 'ArrowLeft' || e.key === 'Left') {
+                    onNextPage();
+                } else if (e.key === '+' || e.key === '=') {
+                    zoomIn();
+                    e.preventDefault();
+                } else if (e.key === '-' || e.key === '_') {
+                    zoomOut();
+                    e.preventDefault();
+                } else if (e.key === '0' || e.key === ')') {
+                    fitToWidth();
+                    e.preventDefault();
+                }
+            });
+            
+            // Check for page in URL hash
+            if (window.location.hash) {
+                const pageMatch = window.location.hash.match(/page=(\d+)/);
+                if (pageMatch) {
+                    const page = parseInt(pageMatch[1]);
+                    if (page > 0 && page <= pdfDoc?.numPages) {
+                        pageNum = page;
+                        renderPage(pageNum);
+                    }
+                }
+            }
+            
+            // Add event listener for bookmark button
+            const bookmarkBtnEl = document.querySelector('.bookmark-btn');
+            if (bookmarkBtnEl) {
+                bookmarkBtnEl.addEventListener('click', toggleBookmark);
+            }
+        });
+    </script>
+
+{% endblock %}

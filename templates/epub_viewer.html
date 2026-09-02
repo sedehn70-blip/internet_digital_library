@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('books') }}">کتاب‌ها</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ title or book.title }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">{{ title or book.title }}</h1>
+                <div>
+                    <span class="badge bg-primary">EPUB</span>
+                    <a href="{{ url_for('books') }}" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-right"></i> بازگشت
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-person"></i> {{ author or book.author or 'ناشناس' }}
+                            <span class="mx-2">|</span>
+                            <i class="bi bi-book"></i> 
+                            {% if book.category == 'novel' %}رمان
+                            {% elif book.category == 'science' %}علمی
+                            {% elif book.category == 'history' %}تاریخی
+                            {% elif book.category == 'religion' %}مذهبی
+                            {% elif book.category == 'historical_religious' %}تاریخی مذهبی
+                            {% else %}عمومی
+                            {% endif %}
+                        </div>
+                        <div>
+                            <span class="text-muted small">
+                                <i class="bi bi-eye"></i> {{ book.read_count }} بار خوانده شده
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if book.description %}
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">توضیحات:</h5>
+                        <p class="mb-0">{{ book.description }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="epub-viewer p-3 border rounded">
+                        <div style="white-space: pre-wrap; font-family: 'Vazir', Tahoma, sans-serif; line-height: 2; text-align: right; direction: rtl;">
+                            {{ content }}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small">
+                                آخرین بازدید: {{ progress.last_opened.strftime('%Y/%m/%d %H:%M') if progress else 'اولین بازدید' }}
+                            </span>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('download_book', book_id=book.id) }}" class="btn btn-outline-primary">
+                                <i class="bi bi-download"></i> دانلود فایل
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.epub-viewer {
+    background-color: #f8f9fa;
+    min-height: 60vh;
+    max-height: 70vh;
+    overflow-y: auto;
+    font-size: 1.1rem;
+    line-height: 2;
+    text-align: justify;
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    direction: rtl;
+}
+
+/* Style headings in EPUB content */
+.epub-viewer h1, 
+.epub-viewer h2, 
+.epub-viewer h3, 
+.epub-viewer h4, 
+.epub-viewer h5, 
+.epub-viewer h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+    color: #2c3e50;
+}
+
+.epub-viewer p {
+    margin-bottom: 1.2em;
+    line-height: 2;
+}
+
+/* Custom scrollbar */
+.epub-viewer::-webkit-scrollbar {
+    width: 8px;
+}
+
+.epub-viewer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.epub-viewer::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.epub-viewer::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* RTL support */
+[dir="rtl"] .epub-viewer {
+    text-align: right;
+}
+
+/* Responsive images */
+.epub-viewer img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1em auto;
+}
+
+/* Blockquotes */
+.epub-viewer blockquote {
+    border-right: 4px solid #6c757d;
+    margin: 1.5em 0;
+    padding: 0.5em 1em;
+    background-color: #f8f9fa;
+    font-style: italic;
+}
+
+/* Tables */
+.epub-viewer table {
+    width: 100%;
+    margin: 1.5em 0;
+    border-collapse: collapse;
+}
+
+.epub-viewer th,
+.epub-viewer td {
+    padding: 0.5em;
+    border: 1px solid #dee2e6;
+    text-align: right;
+}
+
+.epub-viewer th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

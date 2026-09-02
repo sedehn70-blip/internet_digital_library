@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}کتابخانه دیجیتال{% endblock %}</title>
+<link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+<style>
+    @font-face {
+        font-family: 'BTitr';
+        src: url("{{ url_for('static', filename='css/fonts/BTitr.woff2') }}") format('woff2'),
+             url("{{ url_for('static', filename='css/fonts/BTitr.woff') }}") format('woff');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+    }
+    @font-face {
+        font-family: 'BZar';
+        src: url("{{ url_for('static', filename='css/fonts/BZAR.woff2') }}") format('woff2'),
+             url("{{ url_for('static', filename='css/fonts/BZAR.woff') }}") format('woff');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+    }
+    body {
+        font-family: 'BZar', Tahoma, sans-serif;
+        background: #f3f4f6;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .error-card {
+        max-width: 480px;
+        width: 100%;
+        text-align: center;
+        background: #fff;
+        border-radius: 20px;
+        padding: 48px 32px;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        margin: 20px;
+    }
+    .error-card .code {
+        font-family: 'BTitr', Tahoma, sans-serif;
+        font-size: 4rem;
+        font-weight: 700;
+        color: #764ba2;
+        line-height: 1;
+        margin-bottom: 12px;
+    }
+    .error-card h2 {
+        font-family: 'BTitr', Tahoma, sans-serif;
+        margin-bottom: 12px;
+    }
+    .error-card p {
+        color: #666;
+        margin-bottom: 24px;
+    }
+    .btn-primary {
+        background-color: #764ba2;
+        border: none;
+    }
+</style>
+</head>
+<body>
+<div class="error-card">
+    <div class="code">{% block code %}{% endblock %}</div>
+    <i class="bi {% block icon %}bi-exclamation-triangle{% endblock %} mb-3" style="font-size: 2.5rem; color: #764ba2;"></i>
+    <h2>{% block heading %}خطا{% endblock %}</h2>
+    <p>{% block message %}مشکلی پیش آمده است.{% endblock %}</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary px-4">بازگشت به صفحه اصلی</a>
+</div>
+</body>
+</html>

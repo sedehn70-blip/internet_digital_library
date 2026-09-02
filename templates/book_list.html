@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+   
+        <h1 class="h3 mb-0">کتاب‌های موجود</h1>
+        
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2" id="searchForm">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="q" 
+                               placeholder="عنوان کتاب، نویسنده یا کلیدواژه..." 
+                               value="{{ q or '' }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" name="category" id="categorySelect" onchange="this.form.submit()">
+                        <option value="">همه دسته‌ها</option>
+                        <option value="novel" {% if selected_category=='novel' %}selected{% endif %}>📖 رمان</option>
+                        <option value="science" {% if selected_category=='science' %}selected{% endif %}>🔬 علمی</option>
+                        <option value="history" {% if selected_category=='history' %}selected{% endif %}>🏛️ تاریخی</option>
+                        <option value="religion" {% if selected_category=='religion' %}selected{% endif %}>🕌 مذهبی</option>
+                        <option value="historical_religious" {% if selected_category=='historical_religious' %}selected{% endif %}>🕌🏛️ تاریخی مذهبی</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Books Grid -->
+    <div id="books-container">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="books-grid">
+            {% for book in books %}
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm book-card">
+                    <div class="card-img-container">
+                        {% if book.cover_filename %}
+                            <img class="lazyload" 
+                                data-src="{{ url_for('show_cover', filename=book.cover_filename) }}" 
+                                class="me-2" style="height: 320px;; width: 250px;"
+                                alt="{{ book.title }}"
+                                loading="lazy">
+                        {% elif book.category == 'pdf' %}
+                            <img src="{{ url_for('static', filename='images/pdf_placeholder.PNG') }}"
+                             class="me-2" style="height: 320px;; width: 250px;"
+                            
+
+                                alt="pdf_placeholder"
+                                class="img-fluid">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='images/pdf_placeholder.PNG') }}"
+                             class="me-2" style="height: 320px;; width: 250px;"
+
+                                alt="txt_placeholder"
+                                class="img-fluid">
+                        {% endif %}
+                        <div class="position-absolute top-0 start-0 m-2">
+                            <span class="badge bg-primary">
+                                {{ book.file_type|upper }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title text-truncate">{{ book.title }}</h5>
+                        <p class="card-text text-muted small">
+                            <i class="bi bi-person"></i> {{ book.author or 'ناشناس' }}<br>
+                            <i class="bi bi-book"></i> 
+                            {% if book.category == 'novel' %}رمان
+                            {% elif book.category == 'science' %}علمی
+                            {% elif book.category == 'history' %}تاریخی
+                            {% elif book.category == 'religion' %}مذهبی
+                            {% elif book.category == 'historical_religious' %}تاریخی مذهبی
+                            {% else %}عمومی
+                            {% endif %}
+                        </p>
+
+                        {% if book.price and book.price > 0 %}
+                        <p class="mb-2">
+                            {% if user_has_access(book) %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> خریداری‌شده</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">{{ book.price|comma_separated }} تومان</span>
+                            {% endif %}
+                        </p>
+                        {% else %}
+                        <p class="mb-2">
+                            <span class="badge bg-secondary">رایگان</span>
+                        </p>
+                        {% endif %}
+                        
+                        <div class="mt-auto">
+                            {% if book.price and book.price > 0 and not user_has_access(book) %}
+                            <a href="{{ url_for('buy_book', book_id=book.id) }}" class="btn btn-warning mt-auto">
+                            <i class="bi bi-cart"></i> خرید کتاب
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('view_book', book_id=book.id) }}" class="btn btn-primary mt-auto">
+                            <i class="bi bi-eye"></i> مشاهده
+                            </a>
+                            {% endif %}
+                            
+                            {% if current_user.is_admin %}
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('edit_book', book_id=book.id) }}" 
+                                   class="btn btn-xs btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ url_for('delete_book', book_id=book.id) }}" 
+                                      method="POST" 
+                                      class="d-inline" 
+                                      onsubmit="return confirm('آیا از حذف این کتاب مطمئن هستید؟ این عمل قابل بازگشت نیست.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-xs btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-5">
+            <ul class="pagination justify-content-center">
+                {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('books', page=1, q=q, category=selected_category) }}">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('books', page=pagination.prev_num, q=q, category=selected_category) }}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('books', page=page_num, q=q, category=selected_category) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('books', page=pagination.next_num, q=q, category=selected_category) }}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('books', page=pagination.pages, q=q, category=selected_category) }}">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+
+    {% if not books %}
+    <div class="text-center py-5 my-5">
+        <div class="mb-4">
+            <i class="bi bi-book text-muted" style="font-size: 4rem; opacity: 0.3;"></i>
+        </div>
+        <h4 class="text-muted mb-3">کتابی یافت نشد</h4>
+        <p class="text-muted">مشکلی پیش آمده یا هنوز کتابی اضافه نشده است.</p>
+        <a href="{{ url_for('books') }}" class="btn btn-outline-primary mt-2">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>بارگذاری مجدد
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Handle AJAX pagination
+function initBooksGrid() {
+    // Lazy loading for images
+    const lazyImages = document.querySelectorAll('img.lazyload');
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.classList.remove('lazyload');
+                img.classList.add('lazyloaded');
+                imageObserver.unobserve(img);
+            }
+        });
+    });
+
+    lazyImages.forEach(img => imageObserver.observe(img));
+
+    // Add hover effect to book cards
+    document.querySelectorAll('.book-card').forEach(card => {
+        card.style.transition = 'transform 0.2s, box-shadow 0.2s';
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-5px)';
+            card.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = '';
+            card.style.boxShadow = '';
+        });
+    });
+
+    // Handle AJAX pagination
+    document.querySelectorAll('.pagination a').forEach(link => {
+        link.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const url = new URL(link.href);
+            
+            try {
+                const response = await fetch(url);
+                const html = await response.text();
+                const newDoc = new DOMParser().parseFromString(html, 'text/html');
+                
+                // Update books grid
+                const newBooksGrid = newDoc.getElementById('books-grid');
+                if (newBooksGrid) {
+                    document.getElementById('books-grid').innerHTML = newBooksGrid.innerHTML;
+                }
+                
+                // Update pagination
+                const newPagination = newDoc.querySelector('.pagination');
+                if (newPagination) {
+                    const paginationContainer = document.querySelector('.pagination').parentElement;
+                    paginationContainer.innerHTML = newPagination.outerHTML;
+                }
+                
+                // Reinitialize
+                initBooksGrid();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Update URL without page reload
+                window.history.pushState({}, '', url);
+            } catch (error) {
+                console.error('Error loading page:', error);
+                window.location.href = url; // Fallback to normal navigation
+            }
+        });
+    });
+}
+
+// Initialize when document is ready
+document.addEventListener('DOMContentLoaded', initBooksGrid);
+</script>
+{% endblock %}

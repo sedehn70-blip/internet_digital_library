@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <base href="/">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        // Set base URL for all relative paths
+        document.addEventListener('DOMContentLoaded', function() {
+            const baseUrl = window.location.pathname.split('/view_book/')[0] || '/';
+            document.querySelector('base').href = baseUrl;
+        });
+    </script>
+    <title>{{ book.title }} - کتابخانه دیجیتال (PDF)</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+
+    <!-- Bootstrap CSS + icons -->
+    <link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    
+    <!-- PDF.js -->
+    <script src="{{ url_for('static', filename='js/pdf.min.js') }}"></script>
+    <script>
+        // Simple error handler
+        window.addEventListener('error', function(e) {
+            console.error('Error:', e.message, 'in', e.filename, 'line', e.lineno);
+        });
+        
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize PDF.js with worker
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = '{{ url_for('static', filename='js/pdf.worker.min.js') }}';
+                console.log('PDF.js initialized successfully');
+            } else {
+                console.error('PDF.js library not loaded');
+            }
+        });
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    
+    <!-- Progress update handling -->
+    <script>
+        // Stub function for progress updates (can be implemented later)
+        async function updateProgress(bookId, progress) {
+            // This is a stub function that can be implemented when the backend is ready
+            // It won't throw errors or make any actual API calls
+            return new Promise((resolve) => {
+                console.log(`Progress update for book ${bookId}: ${progress}%`);
+                resolve();
+            });
+        }
+    </script>
+
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-hover: #3a56d4;
+            --secondary: #6c757d;
+            --success: #198754;
+            --info: #0dcaf0;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --body-bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+            --border-color: #e9ecef;
+            --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-theme {
+            --primary: #5a7cff;
+            --primary-hover: #4d6fe6;
+            --body-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #f8f9fa;
+            --border-color: #2d3748;
+            --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            font-family: 'Vazir', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--body-bg);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* PDF Container */
+        #pdf-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 70px;
+            overflow: auto;
+            background-color: #525659;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px 0;
+        }
+
+        #pdf-viewer {
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .page {
+            margin: 0 auto 20px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--card-bg);
+            padding: 10px 20px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-secondary {
+            color: var(--text-color);
+            border-color: var(--border-color);
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        /* Page Navigation */
+        .page-navigation {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-input {
+            width: 80px;
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-color);
+            padding: 6px 10px;
+            border-radius: 4px;
+        }
+
+        /* Loading */
+        .loading {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            z-index: 1500;
+            display: none;
+        }
+
+        /* Settings Panel */
+        #settings-panel {
+            position: fixed;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%) translateX(-120%);
+            width: 320px;
+            padding: 20px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            z-index: 2000;
+            transition: all 0.3s ease;
+        }
+
+        #settings-panel.visible {
+            transform: translateY(-50%) translateX(0);
+            opacity: 1;
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+        }
+
+        .settings-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .settings-group h5 {
+            margin: 0 0 15px 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .settings-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Theme Options */
+        .theme-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--card-bg);
+        }
+
+        .theme-option:hover {
+            border-color: var(--primary);
+        }
+
+        .theme-option.active {
+            border-color: var(--primary);
+            background: rgba(67, 97, 238, 0.1);
+        }
+
+        .theme-option input[type="radio"] {
+            display: none;
+        }
+
+        /* Zoom Controls */
+        .zoom-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .zoom-control input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            -webkit-appearance: none;
+        }
+
+        .zoom-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .zoom-control input[type="number"] {
+            width: 70px;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+        }
+
+        .toast {
+            margin-bottom: 10px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast.show {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .toolbar .container {
+                padding: 0 10px;
+            }
+
+            .btn span {
+                display: none;
+            }
+
+            .page-navigation {
+                flex: 1;
+                justify-content: center;
+            }
+
+            #settings-panel {
+                width: 90%;
+                left: 5%;
+                top: auto;
+                bottom: 80px;
+                transform: translateY(0) translateX(-120%);
+            }
+
+            #settings-panel.visible {
+                transform: translateY(0) translateX(0);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-hover);
+        }
+    </style>
+</head>
+
+<body>
+    
+    <div id="data" data-book-id="{{ book.id }}"></div>
+
+    <!-- PDF Container -->
+    <div id="pdf-container">
+        <div id="pdf-viewer"></div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading" aria-hidden="true">
+        <div class="d-flex flex-column align-items-center">
+            <div class="spinner-border text-primary mb-2" role="status">
+                <span class="visually-hidden">در حال بارگذاری...</span>
+            </div>
+            <div>در حال بارگذاری سند...</div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <!-- Add this line right after the page navigation section -->
+            <div id="page-info" class="text-nowrap ms-3">صفحه 1 از 1</div>
+            
+            <!-- Rest of your toolbar content -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- ... existing toolbar buttons ... -->
+            </div>
+        </div>
+    </div>
+</div> 
+    <div class="toolbar">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ url_for('books') }}" class="btn btn-outline-secondary" title="بازگشت">
+                        <i class="bi bi-arrow-right"></i>
+                        <span>بازگشت</span>
+                    </a>
+                </div>
+
+                <div class="page-navigation">
+                    <button id="prev-page" class="btn btn-outline-primary" title="صفحه قبل">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    
+                    <div class="mx-2 d-flex align-items-center">
+                        <input type="number" id="page-num" class="form-control page-input" min="1" value="1" />
+                        <span class="mx-2">از <span id="page-count">0</span></span>
+                    </div>
+                    
+                    <button id="next-page" class="btn btn-outline-primary" title="صفحه بعد">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <button id="zoom-out" class="btn btn-outline-secondary" title="کوچک‌نمایی">
+                        <i class="bi bi-zoom-out"></i>
+                    </button>
+                    
+                    <div class="zoom-level-display px-2" style="min-width: 50px; text-align: center;">
+                        <span id="zoom-percent">100%</span>
+                    </div>
+                    
+                    <button id="zoom-in" class="btn btn-outline-secondary" title="بزرگ‌نمایی">
+                        <i class="bi bi-zoom-in"></i>
+                    </button>
+
+                    <div class="vr mx-2" style="height: 24px;"></div>
+
+                    <button id="bookmark-btn" class="btn btn-outline-secondary" title="نشانک (B)">
+                        <i class="bi bi-bookmark"></i>
+                    </button>
+
+                    <button id="settings-btn" class="btn btn-outline-secondary" title="تنظیمات (S)">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings-overlay" class="settings-overlay" aria-hidden="true"></div>
+
+    <div id="settings-panel" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-gear me-2"></i>تنظیمات نمایش</h5>
+            <button id="close-settings" class="btn-close" aria-label="بستن"></button>
+        </div>
+
+        <div class="settings-group">
+            <label for="zoom-level" class="form-label">میزان بزرگنمایی: <span id="zoom-value">100%</span></label>
+            <div class="zoom-control">
+                <input type="range" class="form-range" id="zoom-level" min="50" max="200" step="1" value="100">
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="form-label">تم نمایش:</label>
+            <div class="theme-options">
+                <label class="theme-option" id="light-theme">
+                    <input type="radio" name="theme" value="light" checked>
+                    <div>
+                        <i class="bi bi-sun-fill d-block mb-1" style="font-size: 1.5rem;"></i>
+                        <span>روشن</span>
+                    </div>
+                </label>
+                <label class="theme-option" id="dark-theme">
+                    <input type="radio" name="theme" value="dark">
+                    <div>
+                        <i class="bi bi-moon-stars-fill d-block mb-1" style="font-size: 1.5rem;"></i>
+                        <span>تیره</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button id="cancel-settings" class="btn btn-outline-secondary">انصراف</button>
+            <button id="apply-settings" class="btn btn-primary">اعمال تغییرات</button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    
+    <!-- PDF.js -->
+    <script>
+        // Set PDF.js worker path
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ url_for('static', filename='js/pdf.worker.min.js') }}";
+    </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // DOM Elements
+        const elements = {
+            container: document.getElementById('pdf-container'),
+            viewer: document.getElementById('pdf-viewer'),
+            pageNum: document.getElementById('page-num'),
+            pageCount: document.getElementById('page-count'),
+            prevPage: document.getElementById('prev-page'),
+            nextPage: document.getElementById('next-page'),
+            pageInfo: document.getElementById('page-info'),  // Add this line
+            zoomIn: document.getElementById('zoom-in'),
+            zoomOut: document.getElementById('zoom-out'),
+            zoomPercent: document.getElementById('zoom-percent'),
+            zoomLevel: document.getElementById('zoom-level'),
+            zoomValue: document.getElementById('zoom-value'),
+            settingsBtn: document.getElementById('settings-btn'),
+            closeSettings: document.getElementById('close-settings'),
+            cancelSettings: document.getElementById('cancel-settings'),
+            applySettings: document.getElementById('apply-settings'),
+            settingsPanel: document.getElementById('settings-panel'),
+            settingsOverlay: document.getElementById('settings-overlay'),
+            bookmarkBtn: document.getElementById('bookmark-btn'),
+            lightTheme: document.getElementById('light-theme'),
+            darkTheme: document.getElementById('dark-theme'),
+            loading: document.getElementById('loading')
+        };
+
+        // State
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.0;
+        let savedZoom = Number(localStorage.getItem('pdfViewerZoom') || 100);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        let savedTheme = localStorage.getItem('pdfViewerTheme') || 'light';
+
+        // Initialize
+        initTheme();
+        initPdfViewer();
+        setupEventListeners();
+        checkBookmarkStatus();
+
+        // Functions
+        function initTheme() {
+            document.body.classList.toggle('dark-theme', savedTheme === 'dark');
+            const themeRadio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
+            if (themeRadio) themeRadio.checked = true;
+            updateZoomUI();
+        }
+
+        function showLoading(show) {
+            elements.loading.style.display = show ? 'flex' : 'none';
+        }
+
+        function updateZoomUI() {
+            elements.zoomPercent.textContent = `${savedZoom}%`;
+            elements.zoomValue.textContent = `${savedZoom}%`;
+            if (elements.zoomLevel) elements.zoomLevel.value = savedZoom;
+        }
+
+        async function loadPdf() {
+            const bookId = document.getElementById('data').dataset.bookId;
+            const pdfUrl = "{{ url_for('get_book_file', book_id=0) }}".replace('0', bookId);
+            showLoading(true);
+
+            try {
+                // Add credentials to the fetch request
+                const loadingTask = pdfjsLib.getDocument({
+                    url: pdfUrl,
+                    withCredentials: true
+                });
+                pdfDoc = await loadingTask.promise;
+                
+                elements.pageCount.textContent = pdfDoc.numPages;
+                elements.pageNum.max = pdfDoc.numPages;
+                
+                // Get initial page from progress data or default to 1
+                const initialPage = {{ progress.position if progress and progress.position > 0 else 1 }};
+                pageNum = Math.min(initialPage, pdfDoc.numPages);
+                
+                // Check if we should update the progress with the total pages
+                const shouldUpdateProgress = {{ 'true' if progress else 'false' }};
+                const currentTotalPages = {{ progress.total_pages|default(1) if progress else 1 }};
+                
+                if (shouldUpdateProgress && currentTotalPages !== pdfDoc.numPages) {
+                    try {
+                        const response = await fetch(`/save_reading_progress/${bookId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-CSRFToken': csrfToken,
+                            },
+                            body: `position={{ progress.position|default(1) if progress else 1 }}&total_pages=${pdfDoc.numPages}`
+                        });
+                        
+                        if (!response.ok) {
+                            console.error('Failed to update progress');
+                        }
+                    } catch (err) {
+                        console.error('Error updating progress:', err);
+                    }
+                }
+                
+                renderPage(pageNum);
+            } catch (err) {
+                console.error('خطا در بارگذاری PDF:', err);
+                elements.viewer.innerHTML = `
+                    <div class="alert alert-danger m-4">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        خطا در بارگذاری فایل PDF: ${err.message || 'نامشخص'}
+                    </div>`;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+function renderPage(num) {
+    if (!pdfDoc) return;
+    
+    pageRendering = true;
+    showLoading(true);
+    saveCurrentPage(num);
+
+    // Clear previous content
+    elements.viewer.innerHTML = '';
+
+    // Fetch the page
+    pdfDoc.getPage(num).then(function(page) {
+        // Set scale to fit width
+        const viewport = page.getViewport({ scale: 1.0 });
+        const containerWidth = elements.container.clientWidth - 40; // 20px padding on each side
+        const scale = (containerWidth / viewport.width) * (savedZoom / 100);
+        const scaledViewport = page.getViewport({ scale: scale });
+
+        // Create canvas
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = scaledViewport.height;
+        canvas.width = scaledViewport.width;
+        canvas.className = 'page';
+
+        // Append canvas to viewer
+        elements.viewer.appendChild(canvas);
+
+        // Render PDF page
+        const renderContext = {
+            canvasContext: context,
+            viewport: scaledViewport
+        };
+
+        // Wait for rendering to finish
+        const renderTask = page.render(renderContext);
+        
+        renderTask.promise.then(function() {
+            pageRendering = false;
+            elements.pageNum.value = num;
+            elements.pageInfo.textContent = `صفحه ${num} از ${pdfDoc.numPages}`;
+            pageNum = num;
+            
+            // Update page count if not set
+            if (elements.pageCount.textContent === '0') {
+                elements.pageCount.textContent = pdfDoc.numPages;
+            }
+            
+            // Enable/disable navigation buttons
+            elements.prevPage.disabled = (num <= 1);
+            elements.nextPage.disabled = (num >= pdfDoc.numPages);
+            
+            // Handle any pending page requests
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+            
+            // Check bookmark status for the current page
+            checkBookmarkStatus();
+        });
+    }).catch(function(err) {
+        console.error('خطا در رندر صفحه:', err);
+        elements.viewer.innerHTML = `
+            <div class="alert alert-danger m-3">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                خطا در نمایش صفحه: ${err.message || 'نامشخص'}
+            </div>`;
+        pageRendering = false;
+    }).finally(() => {
+        showLoading(false);
+    });
+}
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function goToPage(num) {
+            num = parseInt(num, 10);
+            if (!pdfDoc || isNaN(num) || num < 1 || num > pdfDoc.numPages) {
+                if (elements.pageNum) {
+                    elements.pageNum.value = pageNum;
+                }
+                return;
+            }
+            
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function onPrevPage() {
+            if (pageNum <= 1) return;
+            goToPage(pageNum - 1);
+        }
+
+        function onNextPage() {
+            if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+            goToPage(pageNum + 1);
+        }
+
+        function zoomIn() {
+            savedZoom = Math.min(200, savedZoom + 10);
+            updateZoomUI();
+            renderPage(pageNum);
+            localStorage.setItem('pdfViewerZoom', savedZoom);
+        }
+
+        function zoomOut() {
+            savedZoom = Math.max(50, savedZoom - 10);
+            updateZoomUI();
+            renderPage(pageNum);
+            localStorage.setItem('pdfViewerZoom', savedZoom);
+        }
+
+        function saveCurrentPage(num) {
+            const bookId = document.getElementById('data')?.dataset?.bookId;
+            if (!bookId || !num || num < 1) return;
+            
+            fetch(`/save_reading_progress/${bookId}`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded', 
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `position=${num}`,
+                credentials: 'same-origin'
+            }).catch(error => {
+                console.error('Error saving progress:', error);
+            });
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Navigation
+            elements.prevPage.addEventListener('click', onPrevPage);
+            elements.nextPage.addEventListener('click', onNextPage);
+            elements.pageNum.addEventListener('change', () => goToPage(elements.pageNum.value));
+            
+            // Zoom
+            elements.zoomIn.addEventListener('click', zoomIn);
+            elements.zoomOut.addEventListener('click', zoomOut);
+            
+            // Settings
+            elements.settingsBtn.addEventListener('click', toggleSettingsPanel);
+            elements.closeSettings.addEventListener('click', () => toggleSettingsPanel(false));
+            elements.cancelSettings.addEventListener('click', () => toggleSettingsPanel(false));
+            elements.settingsOverlay.addEventListener('click', () => toggleSettingsPanel(false));
+            
+            // Theme
+            elements.lightTheme.addEventListener('click', () => setTheme('light'));
+            elements.darkTheme.addEventListener('click', () => setTheme('dark'));
+            
+            // Apply settings
+            elements.applySettings.addEventListener('click', applySettings);
+            
+            // Bookmark
+            elements.bookmarkBtn.addEventListener('click', toggleBookmark);
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Don't trigger if typing in an input
+                if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+                
+                switch(e.key) {
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        onPrevPage();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        onNextPage();
+                        break;
+                    case 'b':
+                    case 'B':
+                        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                            e.preventDefault();
+                            toggleBookmark();
+                        }
+                        break;
+                    case 's':
+                    case 'S':
+                        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                            e.preventDefault();
+                            toggleSettingsPanel();
+                        }
+                        break;
+                    case 'Escape':
+                        if (elements.settingsPanel.classList.contains('visible')) {
+                            e.preventDefault();
+                            toggleSettingsPanel(false);
+                        }
+                        break;
+                    case '+':
+                    case '=':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            zoomIn();
+                        }
+                        break;
+                    case '-':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            zoomOut();
+                        }
+                        break;
+                    case '0':
+                        if (e.ctrlKey || e.metaKey) {
+                            e.preventDefault();
+                            savedZoom = 100;
+                            updateZoomUI();
+                            renderPage(pageNum);
+                            localStorage.setItem('pdfViewerZoom', savedZoom);
+                        }
+                        break;
+                }
+            });
+            
+            // Mouse wheel for zoom
+            let zoomTimeout;
+            elements.viewer.addEventListener('wheel', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                    const delta = e.deltaY;
+                    
+                    clearTimeout(zoomTimeout);
+                    zoomTimeout = setTimeout(() => {
+                        if (delta < 0) {
+                            zoomIn();
+                        } else {
+                            zoomOut();
+                        }
+                    }, 50);
+                }
+            }, { passive: false });
+            
+            // Zoom level input
+            if (elements.zoomLevel) {
+                elements.zoomLevel.addEventListener('input', (e) => {
+                    savedZoom = parseInt(e.target.value);
+                    updateZoomUI();
+                });
+                
+                elements.zoomLevel.addEventListener('change', () => {
+                    savedZoom = Math.min(200, Math.max(50, savedZoom));
+                    updateZoomUI();
+                    renderPage(pageNum);
+                    localStorage.setItem('pdfViewerZoom', savedZoom);
+                });
+            }
+        }
+
+        function toggleSettingsPanel(show = null) {
+            const isVisible = elements.settingsPanel.classList.contains('visible');
+            const shouldShow = show !== null ? show : !isVisible;
+            
+            if (shouldShow) {
+                elements.settingsPanel.classList.add('visible');
+                elements.settingsOverlay.style.display = 'block';
+                setTimeout(() => {
+                    elements.settingsOverlay.style.opacity = '1';
+                }, 10);
+            } else {
+                elements.settingsPanel.classList.remove('visible');
+                elements.settingsOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    elements.settingsOverlay.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        function setTheme(theme) {
+            savedTheme = theme;
+            document.body.classList.toggle('dark-theme', theme === 'dark');
+            localStorage.setItem('pdfViewerTheme', theme);
+            
+            // Update radio button
+            const themeRadio = document.querySelector(`input[name="theme"][value="${theme}"]`);
+            if (themeRadio) themeRadio.checked = true;
+            
+            // Update theme option styling
+            document.querySelectorAll('.theme-option').forEach(opt => {
+                opt.classList.toggle('active', opt.querySelector('input').value === theme);
+            });
+        }
+
+        function applySettings() {
+            const selectedTheme = document.querySelector('input[name="theme"]:checked')?.value || 'light';
+            setTheme(selectedTheme);
+            
+            // Apply zoom
+            savedZoom = Math.min(200, Math.max(50, parseInt(elements.zoomLevel.value) || 100));
+            updateZoomUI();
+            renderPage(pageNum);
+            localStorage.setItem('pdfViewerZoom', savedZoom);
+            
+            toggleSettingsPanel(false);
+            showToast('تنظیمات با موفقیت اعمال شد', 'success');
+        }
+
+        async function toggleBookmark() {
+            try {
+                const bookId = document.getElementById('data')?.dataset?.bookId;
+                if (!bookId) {
+                    showToast('خطا در یافتن اطلاعات کتاب', 'error');
+                    return;
+                }
+
+                const btn = elements.bookmarkBtn;
+                const icon = btn.querySelector('i');
+                const isBookmarked = icon.classList.contains('bi-bookmark-fill');
+                
+                const response = await fetch(`/toggle_bookmark/${bookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        page: 1,  // Always use page 1 for book-level bookmarks
+                        action: isBookmarked ? 'remove' : 'add'
+                    }),
+                    credentials: 'same-origin'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Toggle bookmark icon
+                    if (data.is_bookmarked) {
+                        icon.classList.remove('bi-bookmark');
+                        icon.classList.add('bi-bookmark-fill', 'text-warning');
+                        showToast('کتاب به نشانک‌ها اضافه شد', 'success');
+                    } else {
+                        icon.classList.remove('bi-bookmark-fill', 'text-warning');
+                        icon.classList.add('bi-bookmark');
+                        showToast('کتاب از نشانک‌ها حذف شد', 'info');
+                    }
+                } else {
+                    showToast(data.error || 'خطا در ذخیره نشانک', 'error');
+                }
+            } catch (error) {
+                console.error('Error in toggleBookmark:', error);
+                showToast('خطا در ارتباط با سرور', 'error');
+            }
+        }
+
+        async function checkBookmarkStatus() {
+            const bookId = document.getElementById('data')?.dataset?.bookId;
+            if (!bookId) return;
+            
+            try {
+                // Get bookmarks for this book
+                const response = await fetch(`/get_bookmarks/${bookId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Check if book has any bookmark (page number doesn't matter)
+                    const isBookmarked = result.bookmarks && result.bookmarks.length > 0;
+                    
+                    const icon = elements.bookmarkBtn?.querySelector('i');
+                    if (icon) {
+                        if (isBookmarked) {
+                            icon.classList.remove('bi-bookmark');
+                            icon.classList.add('bi-bookmark-fill', 'text-warning');
+                        } else {
+                            icon.classList.remove('bi-bookmark-fill', 'text-warning');
+                            icon.classList.add('bi-bookmark');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('خطا در بررسی وضعیت نشانک:', error);
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container') || (() => {
+                const container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+                return container;
+            })();
+
+            const toast = document.createElement('div');
+            toast.className = `toast show align-items-center text-white bg-${type} border-0`;
+            toast.role = 'alert';
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center">
+                        ${getToastIcon(type)}
+                        <span class="me-2">${message}</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="بستن"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove toast after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 150);
+            }, 3000);
+
+            function getToastIcon(type) {
+                const icons = {
+                    success: 'check-circle-fill',
+                    error: 'exclamation-triangle-fill',
+                    warning: 'exclamation-triangle-fill',
+                    info: 'info-circle-fill'
+                };
+                return `<i class="bi bi-${icons[type] || 'info-circle-fill'} me-2"></i>`;
+            }
+        }
+
+        // Initialize PDF viewer
+        function initPdfViewer() {
+            loadPdf();
+        }
+    });
+    </script>
+</body>
+</html>

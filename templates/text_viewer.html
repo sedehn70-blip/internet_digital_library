@@ -1,0 +1,769 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <!-- Toasts will be added here dynamically -->
+</div>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('books') }}">کتاب‌ها</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ book.title }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="h3 mb-0">{{ book.title }}</h1>
+                <div>
+                    <span class="badge bg-primary">TXT</span>
+                    <a href="{{ url_for('books') }}" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-right"></i> بازگشت
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress mb-3" style="height: 5px;">
+                <div id="reading-progress" class="progress-bar bg-success" role="progressbar" 
+                     style="width: {{ (current_page / total_pages * 100)|round|int }}%" 
+                     aria-valuenow="{{ current_page }}" 
+                     aria-valuemin="1" 
+                     aria-valuemax="{{ total_pages }}">
+                </div>
+            </div>
+            
+            <!-- Page Info -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="text-muted small">
+                    صفحه {{ current_page }} از {{ total_pages }} ({{ ((current_page / total_pages) * 100)|round(1) }}%)
+                </div>
+                <div class="text-muted small">
+                    {{ (current_page * 2000)|number_format(0, ',', ',') }} از {{ full_content_length|number_format(0, ',', ',') }} کاراکتر
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="bi bi-person"></i> {{ book.author or 'ناشناس' }}
+                            <span class="mx-2">|</span>
+                            <i class="bi bi-book"></i> 
+                            {% if book.category == 'novel' %}رمان
+                            {% elif book.category == 'science' %}علمی
+                            {% elif book.category == 'history' %}تاریخی
+                            {% elif book.category == 'religion' %}مذهبی
+                            {% elif book.category == 'historical_religious' %}تاریخی مذهبی
+                            {% else %}عمومی
+                            {% endif %}
+                        </div>
+                        <div>
+                            <span class="text-muted small">
+                                <i class="bi bi-eye"></i> {{ book.read_count }} بار خوانده شده
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if book.description %}
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">توضیحات:</h5>
+                        <p class="mb-0">{{ book.description }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Text Content -->
+                    <div id="text-content" class="text-viewer p-3 border rounded" 
+                         style="min-height: 60vh; max-height: 60vh; overflow-y: auto;"
+                         data-book-id="{{ book.id }}" 
+                         data-current-page="{{ current_page }}">
+                        <div style="white-space: pre-wrap; font-family: 'BZAR', 'B Titr', 'B Nazanin', Tahoma, sans-serif; line-height: 2.2; text-align: right; direction: rtl; unicode-bidi: embed; letter-spacing: 0;">
+                            {{ content }}
+                        </div>
+                    </div>
+                    
+                    <!-- Bookmark Controls -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="bookmark-controls">
+                            <button id="add-bookmark" class="btn btn-sm btn-outline-primary me-2">
+                                <i class="bi bi-bookmark-plus"></i> نشانک‌گذاری صفحه
+                            </button>
+                            <div class="dropdown d-inline-block">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                        id="bookmarkDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-bookmarks"></i> نشانک‌ها
+                                </button>
+                                <ul id="bookmark-list" class="dropdown-menu" aria-labelledby="bookmarkDropdown">
+                                    <li class="dropdown-item text-muted">در حال بارگذاری...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div class="d-flex justify-content-between mt-3">
+                        <div>
+                            <button {% if current_page <= 1 %}disabled{% endif %}
+                                    class="btn btn-outline-primary" id="prev-page"
+                                    data-page="{{ current_page - 1 }}">
+                                <i class="bi bi-arrow-right"></i> صفحه قبل
+                            </button>
+                        </div>
+                        <div class="page-input-group" style="max-width: 150px;">
+                            <div class="input-group">
+                                <input type="number" 
+                                       id="page-input" 
+                                       class="form-control text-center" 
+                                       min="1" 
+                                       max="{{ total_pages }}" 
+                                       value="{{ current_page }}"
+                                       onkeypress="if(event.keyCode === 13) { document.getElementById('go-to-page').click(); return false; }">
+                                <button class="btn btn-outline-primary" id="go-to-page">برو</button>
+                            </div>
+                            <div class="text-center text-muted small mt-1">از {{ total_pages }}</div>
+                        </div>
+                        <div>
+                            <button {% if current_page >= total_pages %}disabled{% endif %}
+                                    class="btn btn-outline-primary" id="next-page"
+                                    data-page="{{ current_page + 1 }}">
+                                صفحه بعد <i class="bi bi-arrow-left"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-muted small" id="last-visit-display">
+                                {% if progress and progress.last_opened %}
+                                    <span class="d-none" id="last-visit-timestamp">{{ progress.last_opened.isoformat() if progress.last_opened else '' }}</span>
+                                    <span id="last-visit-text">در حال بارگذاری تاریخ...</span>
+                                {% else %}
+                                    اولین بازدید
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <!-- Download button removed as requested -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form for saving progress -->
+<form id="save-progress-form" method="POST" action="{{ url_for('save_reading_progress', book_id=book.id) }}" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="position" id="progress-position" value="{{ current_page }}">
+</form>
+{% endblock %}
+
+{% block styles %}
+<!-- Add this at the end of the file, before the closing body tag -->
+{% block scripts %}
+<script>
+// Main application state and initialization
+document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+    // DOM elements
+    const textContent = document.getElementById('text-content');
+    const pageInput = document.getElementById('page-input');
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    const bookmarkList = document.getElementById('bookmark-list');
+    const addBookmarkBtn = document.getElementById('add-bookmark');
+    
+    // State
+    const totalPages = parseInt('{{ total_pages }}');
+    let currentPage = parseInt('{{ current_page }}');
+    const bookId = {{ book.id }};
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    let saveProgressTimeout;
+
+    // Initialize the application
+    function init() {
+        restoreScrollPosition();
+        setupEventListeners();
+        loadBookmarks();
+    }
+
+    // Restore scroll position from session storage
+    function restoreScrollPosition() {
+        if (!textContent) return;
+        
+        const scrollPosition = sessionStorage.getItem(`scrollPos_${bookId}_${currentPage}`);
+        if (scrollPosition) {
+            // Small delay to ensure the content is fully loaded
+            setTimeout(() => {
+                textContent.scrollTop = parseInt(scrollPosition);
+            }, 100);
+        }
+    }
+
+    // Save scroll position to session storage
+    function saveScrollPosition() {
+        if (textContent) {
+            sessionStorage.setItem(`scrollPos_${bookId}_${currentPage}`, textContent.scrollTop);
+        }
+    }
+
+    // Save reading progress to the server
+    async function saveProgress(page) {
+        try {
+            const response = await fetch("{{ url_for('save_reading_progress', book_id=book.id) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: `position=${page}`
+            });
+            return response.ok;
+        } catch (error) {
+            console.error('Error saving progress:', error);
+            return false;
+        }
+    }
+
+    // Navigate to a specific page
+    async function navigateToPage(page) {
+        page = parseInt(page);
+        if (page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        
+        if (page !== currentPage) {
+            saveScrollPosition();
+            const success = await saveProgress(page);
+            if (success) {
+                window.location.href = `{{ url_for('view_book', book_id=book.id) }}?page=${page}`;
+            } else {
+                console.error('Failed to save progress before navigation');
+                showToast('خطا در ذخیره پیشرفت مطالعه', 'error');
+            }
+        }
+    }
+
+    // Load bookmarks for the current book
+    async function loadBookmarks() {
+        if (!bookmarkList) return;
+        
+        try {
+            // Show loading state
+            bookmarkList.innerHTML = '<li class="dropdown-item text-muted">در حال بارگذاری نشانک‌ها...</li>';
+            
+            const response = await fetch(`/get_bookmarks/${bookId}?current_page=${currentPage}`);
+            
+            if (!response.ok) {
+                throw new Error('خطا در بارگذاری نشانک‌ها');
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.error || 'خطا در دریافت نشانک‌ها');
+            }
+            
+            renderBookmarks(result.bookmarks || []);
+            
+        } catch (error) {
+            console.error('Error loading bookmarks:', error);
+            showBookmarkError('خطا در بارگذاری نشانک‌ها');
+        }
+    }
+
+    // Render bookmarks in the dropdown
+    function renderBookmarks(bookmarks) {
+        if (!bookmarkList) return;
+        
+        bookmarkList.innerHTML = '';
+        
+        if (bookmarks.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'dropdown-item text-muted';
+            li.textContent = 'نشانکی وجود ندارد';
+            bookmarkList.appendChild(li);
+            updateBookmarkButtonState(false);
+            return;
+        }
+        
+        // Sort bookmarks by page number
+        bookmarks.sort((a, b) => a.page - b.page);
+        
+        // Check if current page is bookmarked
+        const currentBookmark = bookmarks.find(b => b.page == currentPage);
+        updateBookmarkButtonState(!!currentBookmark, currentBookmark?.id);
+        
+        // Add each bookmark to the list
+        bookmarks.forEach(bookmark => {
+            const li = document.createElement('li');
+            li.className = 'dropdown-item d-flex justify-content-between align-items-center';
+            li.id = `bookmark-${bookmark.id}`;
+            
+            const noteText = bookmark.note ? ` - ${bookmark.note}` : '';
+            const isCurrentPage = parseInt(bookmark.page) === parseInt(currentPage);
+            
+            li.innerHTML = `
+                <a href="{{ url_for('view_book', book_id=book.id) }}?page=${bookmark.page}" 
+                   class="${isCurrentPage ? 'text-primary fw-bold' : ''}" 
+                   style="flex-grow: 1; text-decoration: none; color: inherit;">
+                    صفحه ${bookmark.page}${noteText}
+                </a>
+                <button class="btn btn-sm btn-link text-danger p-0 delete-bookmark" 
+                        data-id="${bookmark.id}" 
+                        title="حذف نشانک">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            
+            bookmarkList.appendChild(li);
+        });
+    }
+
+    // Show error message in bookmarks list
+    function showBookmarkError(message) {
+        if (!bookmarkList) return;
+        
+        const errorLi = document.createElement('li');
+        errorLi.className = 'dropdown-item text-danger';
+        errorLi.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${message}`;
+        bookmarkList.innerHTML = '';
+        bookmarkList.appendChild(errorLi);
+        updateBookmarkButtonState(false);
+    }
+
+    // Update the bookmark button state based on current page bookmark status
+    function updateBookmarkButtonState(isBookmarked, bookmarkId = null) {
+        if (!addBookmarkBtn) return;
+        
+        if (isBookmarked) {
+            addBookmarkBtn.innerHTML = '<i class="bi bi-bookmark-check-fill"></i> حذف نشانک';
+            addBookmarkBtn.onclick = () => deleteBookmark(bookmarkId);
+            addBookmarkBtn.classList.remove('btn-outline-primary');
+            addBookmarkBtn.classList.add('btn-outline-danger');
+        } else {
+            addBookmarkBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> نشانک‌گذاری صفحه';
+            addBookmarkBtn.onclick = addBookmark;
+            addBookmarkBtn.classList.remove('btn-outline-danger');
+            addBookmarkBtn.classList.add('btn-outline-primary');
+        }
+        addBookmarkBtn.disabled = false;
+    }
+
+    // Add a new bookmark
+    async function addBookmark() {
+        const note = prompt('یادداشت برای این نشانک (اختیاری):', '');
+        if (note === null) return; // User cancelled
+        
+        const originalButtonState = addBookmarkBtn.innerHTML;
+        try {
+            addBookmarkBtn.disabled = true;
+            addBookmarkBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> در حال ذخیره...';
+            
+            const response = await fetch(`/toggle_bookmark/${bookId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    action: 'add',
+                    page: currentPage,
+                    note: note
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'خطا در ذخیره نشانک');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadBookmarks();
+                showToast('صفحه با موفقیت نشانک‌گذاری شد', 'success');
+            } else {
+                throw new Error(result.error || 'خطا در ذخیره نشانک');
+            }
+        } catch (error) {
+            console.error('Error adding bookmark:', error);
+            showToast(error.message || 'خطا در ذخیره نشانک', 'error');
+            addBookmarkBtn.innerHTML = originalButtonState;
+            addBookmarkBtn.disabled = false;
+        }
+    }
+
+    // Delete a bookmark
+    async function deleteBookmark(bookmarkId) {
+        if (!bookmarkId || !confirm('آیا از حذف این نشانک مطمئن هستید؟')) {
+            return;
+        }
+        
+        const originalButtonState = addBookmarkBtn ? addBookmarkBtn.innerHTML : '';
+        try {
+            if (addBookmarkBtn) {
+                addBookmarkBtn.disabled = true;
+                addBookmarkBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> در حال حذف...';
+            }
+            
+            const response = await fetch(`/toggle_bookmark/${bookId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    action: 'remove',
+                    bookmark_id: bookmarkId
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'خطا در حذف نشانک');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Reload bookmarks to update the UI
+                if (typeof loadBookmarks === 'function') {
+                    await loadBookmarks();
+                }
+                showToast('نشانک با موفقیت حذف شد', 'success');
+            } else {
+                throw new Error(result.error || 'خطا در حذف نشانک');
+            }
+        } catch (error) {
+            console.error('Error deleting bookmark:', error);
+            showToast(error.message || 'خطا در حذف نشانک', 'error');
+            if (addBookmarkBtn) {
+                addBookmarkBtn.innerHTML = originalButtonState;
+                addBookmarkBtn.disabled = false;
+            }
+        }
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'success') {
+        const toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast show align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+        toast.role = 'alert';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>`;
+        
+        toastContainer.appendChild(toast);
+        
+        // Auto-remove toast after 3 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 3000);
+    }
+
+    // Set up event listeners
+    function setupEventListeners() {
+        // Navigation
+        if (prevPageBtn) {
+            prevPageBtn.addEventListener('click', () => navigateToPage(currentPage - 1));
+        }
+
+        if (nextPageBtn) {
+            nextPageBtn.addEventListener('click', () => navigateToPage(currentPage + 1));
+        }
+
+        if (pageInput) {
+            const goToPage = () => {
+                const page = parseInt(pageInput.value);
+                if (!isNaN(page)) {
+                    navigateToPage(page);
+                }
+            };
+
+            document.getElementById('go-to-page')?.addEventListener('click', goToPage);
+            pageInput.addEventListener('keyup', (e) => e.key === 'Enter' && goToPage());
+        }
+
+        // Save scroll position when leaving the page
+        window.addEventListener('beforeunload', saveScrollPosition);
+
+        // Auto-save progress when scrolling
+        if (textContent) {
+            textContent.addEventListener('scroll', function() {
+                clearTimeout(saveProgressTimeout);
+                saveProgressTimeout = setTimeout(() => {
+                    const scrollPercentage = Math.round((textContent.scrollTop / (textContent.scrollHeight - textContent.clientHeight)) * 100);
+                    if (scrollPercentage > 80) {
+                        saveProgress(currentPage);
+                    }
+                }, 1000);
+            });
+        }
+
+        // Bookmark list click handler (event delegation)
+        if (bookmarkList) {
+            bookmarkList.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.delete-bookmark');
+                if (deleteBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const bookmarkId = deleteBtn.dataset.id;
+                    if (bookmarkId) {
+                        deleteBookmark(bookmarkId);
+                    }
+                }
+            });
+        }
+    }
+
+    // Function to convert Gregorian to Persian date
+    function toPersianDate(isoDate) {
+        if (!isoDate) return '';
+        
+        const date = new Date(isoDate);
+        
+        // Using JavaScript's built-in Intl API for Persian date formatting
+        const jDate = new Intl.DateTimeFormat('fa-IR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).format(date);
+        
+        return jDate;
+    }
+
+    // Update last visit display with Persian date
+    function updatePersianDate() {
+        const timestampElement = document.getElementById('last-visit-timestamp');
+        const displayElement = document.getElementById('last-visit-text');
+        
+        if (timestampElement && displayElement) {
+            const isoDate = timestampElement.textContent.trim();
+            if (isoDate) {
+                const persianDate = toPersianDate(isoDate);
+                if (persianDate) {
+                    displayElement.textContent = `آخرین بازدید: ${persianDate}`;
+                    return;
+                }
+            }
+            displayElement.textContent = 'اولین بازدید';
+        }
+    }
+    
+    // Run on page load and after a short delay to ensure elements are available
+    document.addEventListener('DOMContentLoaded', updatePersianDate);
+    setTimeout(updatePersianDate, 100);
+
+    // Initialize the application
+    try {
+        init();
+        
+        // Handle AJAX page navigation
+        function loadPage(page) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('page', page);
+            
+            // Save current scroll position
+            const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+            
+            // Show loading indicator
+            const contentDiv = document.getElementById('text-content');
+            const loadingHtml = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">در حال بارگذاری...</span>
+                    </div>
+                    <p class="mt-2 text-muted">در حال بارگذاری صفحه ${page}</p>
+                </div>`;
+            
+            contentDiv.innerHTML = loadingHtml;
+            
+            // Update URL without reloading
+            window.history.pushState({page: page, scroll: scrollPosition}, '', url.toString());
+            
+            // Load page content via AJAX
+            fetch(url.toString())
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newContent = doc.getElementById('text-content').innerHTML;
+                    
+                    // Update content with fade effect
+                    contentDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        contentDiv.innerHTML = newContent;
+                        contentDiv.style.opacity = '1';
+                        
+                        // Update page number in input
+                        document.getElementById('page-input').value = page;
+                        
+                        // Update navigation buttons
+                        const prevBtn = document.getElementById('prev-page');
+                        const nextBtn = document.getElementById('next-page');
+                        
+                        prevBtn.disabled = page <= 1;
+                        nextBtn.disabled = page >= {{ total_pages }};
+                        
+                        // Update data-page attributes
+                        prevBtn.setAttribute('data-page', parseInt(page) - 1);
+                        nextBtn.setAttribute('data-page', parseInt(page) + 1);
+                        
+                        // Restore scroll position after content loads
+                        window.scrollTo(0, scrollPosition);
+                        
+                        // Re-initialize any necessary components
+                        if (window.MathJax) {
+                            MathJax.typeset();
+                        }
+                    }, 300);
+                })
+                .catch(error => {
+                    console.error('Error loading page:', error);
+                    contentDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            خطا در بارگذاری صفحه. لطفاً دوباره امتحان کنید.
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="window.location.reload()">
+                                تلاش مجدد
+                            </button>
+                        </div>`;
+                });
+        }
+        
+        // Add event listeners for navigation
+        document.getElementById('prev-page').addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.getAttribute('data-page');
+            if (page > 0) loadPage(page);
+        });
+        
+        document.getElementById('next-page').addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.getAttribute('data-page');
+            if (page <= {{ total_pages }}) loadPage(page);
+        });
+        
+        document.getElementById('go-to-page').addEventListener('click', function() {
+            const pageInput = document.getElementById('page-input');
+            let page = parseInt(pageInput.value);
+            if (page < 1) page = 1;
+            if (page > {{ total_pages }}) page = {{ total_pages }};
+            if (page !== {{ current_page }}) {
+                loadPage(page);
+            }
+        });
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.page) {
+                // Restore scroll position if available
+                if (event.state.scroll) {
+                    window.scrollTo(0, event.state.scroll);
+                }
+                loadPage(event.state.page);
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error initializing text viewer:', error);
+    }
+});
+</script>
+{% endblock %}
+<style>
+/* Smooth transitions */
+#text-content {
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Better text readability for Persian */
+.text-viewer {
+    background-color: #f8f9fa;
+    min-height: 60vh;
+    max-height: 70vh;
+    overflow-y: auto;
+    font-size: 1.1rem;
+    line-height: 2.2;
+    text-align: justify;
+    padding: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    direction: rtl;
+    font-family: 'BZAR', 'B Titr', 'B Nazanin', Tahoma, sans-serif;
+}
+
+/* Custom scrollbar */
+.text-viewer::-webkit-scrollbar {
+    width: 8px;
+}
+
+.text-viewer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.text-viewer::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.text-viewer::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* RTL support and Persian text optimization */
+[dir="rtl"] .text-viewer {
+    text-align: right;
+}
+
+/* Ensure proper Persian text rendering */
+.text-viewer div[style*="white-space: pre-wrap"] {
+    font-family: 'BZAR', 'B Titr', 'B Nazanin', Tahoma, sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+    unicode-bidi: embed !important;
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+    line-height: 2.2 !important;
+}
+
+/* Fix for Persian character spacing */
+.text-viewer * {
+    font-family: 'BZAR', 'B Titr', 'B Nazanin', Tahoma, sans-serif;
+    direction: rtl;
+    text-align: right;
+}
+
+/* Ensure proper text flow for Persian */
+.text-viewer p, .text-viewer div {
+    text-align: right;
+    direction: rtl;
+    font-family: 'BZAR', 'B Titr', 'B Nazanin', Tahoma, sans-serif;
+    line-height: 2.2;
+    margin-bottom: 1em;
+}
+</style>
+{% endblock %}

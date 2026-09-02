@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}کتابخانه دیجیتال مرکز ری‌شناسی{% endblock %}</title>
+    <!-- Bootstrap RTL CSS Local -->
+    <link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+
+    <!-- Bootstrap Icons from CDN -->
+    <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
+    
+    <!-- Local CSS -->
+    <link href="{{ url_for('static', filename='css/fonts.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- Your custom styles -->
+    <style>
+        /* Your existing styles here */
+        :root {
+            --primary-color: #3f37c9;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --text-primary: #2b2d42;
+            --text-secondary: #f6ff0071;
+            --bg-light: #f8f9fa;
+            --bg-white: #ffffff;
+            --success-color: #1f9a52;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --border-radius: 0.5rem;
+            --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --transition: all 0.3s ease-in-out;
+        }
+        .chart-bar {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazirmatn', 'Vazir', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        a:hover {
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Advertisement Banner Styles */
+        .advertisement-banner {
+            background: linear-gradient(135deg, #f6f8f9 0%, #e9ecef 100%);
+            color: #2c3e50;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 10px 0;
+        }
+        
+        .advertisement-banner a:hover {
+            opacity: 0.9;
+            transition: all 0.3s ease;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(120deg, #372fc0 0%, var(--primary-color) 45%, var(--accent-color) 100%);
+            padding: 0.6rem 2rem;
+            box-shadow: 0 4px 20px -4px rgba(63, 55, 192, 0.35);
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+            backdrop-filter: saturate(180%) blur(6px);
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white !important;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .navbar-brand i {
+            font-size: 1.75rem;
+        }
+
+        /* Center navbar items */
+        #navbarNav {
+            flex-grow: 1;
+            justify-content: center;
+        }
+        
+        .navbar-nav {
+            gap: 0.35rem;
+            margin: 0 auto;
+            align-items: center;
+        }
+        
+        /* Ensure the right-aligned items stay on the right */
+        .navbar-nav:last-child {
+            margin-left: auto;
+            margin-right: 0;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.92) !important;
+            font-weight: 500;
+            font-size: 0.92rem;
+            padding: 0.5rem 0.9rem !important;
+            border-radius: 999px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover, .nav-link:focus {
+            color: white !important;
+            background-color: rgba(255, 255, 255, 0.16);
+        }
+
+        .nav-link i {
+            font-size: 1.05rem;
+        }
+
+        /* Admin management dropdown trigger */
+        .admin-menu-toggle {
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            font-weight: 600;
+        }
+
+        .admin-menu-toggle:hover, .admin-menu-toggle:focus {
+            background: rgba(255, 255, 255, 0.24) !important;
+        }
+
+        .admin-menu-toggle .admin-badge-icon {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.22);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+
+        /* Dropdown menus (admin + user) */
+        .navbar .dropdown-menu {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 12px 32px -6px rgba(43, 45, 66, 0.25);
+            padding: 0.6rem;
+            margin-top: 0.6rem !important;
+            min-width: 15rem;
+            animation: dropdownFade 0.18s ease-out;
+        }
+
+        @keyframes dropdownFade {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .navbar .dropdown-header {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: #9296a8;
+            text-transform: uppercase;
+            padding: 0.35rem 0.6rem;
+        }
+
+        .navbar .dropdown-item {
+            border-radius: 0.65rem;
+            padding: 0.55rem 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-weight: 500;
+            font-size: 0.92rem;
+            color: var(--text-primary);
+            transition: var(--transition);
+        }
+
+        .navbar .dropdown-item:hover, .navbar .dropdown-item:focus {
+            background-color: var(--bg-light);
+            color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        .navbar .dropdown-item.text-danger:hover {
+            background-color: #fdecea;
+            color: var(--danger-color);
+        }
+
+        .navbar .dropdown-item .item-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 0.6rem;
+            background: rgba(63, 55, 192, 0.1);
+            color: var(--primary-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .navbar .dropdown-item.text-danger .item-icon {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+        }
+
+        .navbar .dropdown-divider {
+            margin: 0.4rem 0.2rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.5rem 1.25rem;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+        }
+
+        /* Flash Messages */
+        .flashes {
+            position: fixed;
+            top: 5rem;
+            right: 1.5rem;
+            z-index: 1050;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .alert {
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--box-shadow);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideIn 0.3s ease-out forwards;
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border-right: 4px solid #28a745;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-right: 4px solid #dc3545;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-right: 4px solid #17a2b8;
+        }
+
+        .alert i {
+            font-size: 1.5rem;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Main Content */
+        main {
+            min-height: calc(100vh - 200px);
+            padding: 2rem 0;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 2.5rem 0 1.5rem;
+            margin-top: 4rem;
+        }
+
+        .footer h5 {
+            color: white;
+            margin-bottom: 1.25rem;
+            font-weight: 600;
+        }
+
+        .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-links a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .footer-links a:hover {
+            color: white;
+            padding-right: 0.5rem;
+        }
+
+        .footer-links i {
+            font-size: 0.9rem;
+        }
+
+        .copyright {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+            color: #95a5a6;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                background-color: white;
+                border-radius: var(--border-radius);
+                padding: 1rem;
+                margin-top: 1rem;
+                box-shadow: var(--box-shadow);
+            }
+
+            .navbar-nav {
+                gap: 0.35rem;
+                align-items: stretch;
+            }
+
+            .nav-link {
+                color: var(--text-primary) !important;
+                padding: 0.75rem 1rem !important;
+                border-radius: var(--border-radius);
+            }
+
+            .nav-link:hover, .nav-link:focus {
+                background-color: var(--bg-light);
+                color: var(--primary-color) !important;
+            }
+
+            .admin-menu-toggle {
+                background: var(--bg-light) !important;
+                border: 1px solid #e9ecef;
+                color: var(--text-primary) !important;
+            }
+
+            .admin-menu-toggle .admin-badge-icon {
+                background: rgba(63, 55, 192, 0.12);
+                color: var(--primary-color);
+            }
+
+            .navbar .dropdown-menu {
+                box-shadow: none;
+                border: 1px solid #eef0f3;
+                margin-top: 0.35rem !important;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .flashes {
+                top: 1rem;
+                right: 1rem;
+                left: 1rem;
+                max-width: 100%;
+            }
+
+            .alert {
+                width: 100%;
+            }
+        }
+        
+        .profile-image-container {
+    width: 150px;
+
+            .alert-success {
+                background-color: #d4edda;
+                color: #155724;
+                border-right: 4px solid #28a745;
+            }
+}
+
+.default-profile-image {
+    width: 100%;
+    height: 100%;
+    background: #f0f0f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    color: #999;
+}
+
+/* استایل‌های فرم */
+.form-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* اعتبارسنجی فرم */
+.form-control:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+}
+
+/* دکمه ارسال */
+.btn-primary {
+    background-color: #4361ee;
+    border-color: #4361ee;
+}
+
+.btn-primary:hover {
+    background-color: #3a56d4;
+    border-color: #3a56d4;
+}
+    </style>
+
+    {% block extra_css %}{% endblock %}
+
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <!-- Brand and toggle button -->
+            <a class="navbar-brand d-flex align-items-center me-0" href="{{ url_for('index') }}" style="min-width: 200px;">
+                <img src="{{ url_for('static', filename='images/logo/logo.png') }}" alt="لوگو" class="me-2" style="height: 80px; width: auto;">
+                <span class="d-none d-md-inline">کتابخانه دیجیتال📚</span>
+                <span class="d-md-none"></span>
+            </a>
+
+            <!-- Toggle button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Navbar content -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 d-flex align-items-center">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item position-relative">
+                            <a class="nav-link" href="{{ url_for('new_books') }}">
+                                <i class="bi bi-star-fill me-1"></i> جدیدها
+                                {% set new_books_count = get_new_books_count(current_user) %}
+                                {% if new_books_count > 0 %}
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger new-books-badge" style="font-size: 0.6rem; padding: 0.2em 0.4em;">
+                                        {{ new_books_count }}
+                                    </span>
+                                {% endif %}
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('books') }}">
+                                <i class="bi bi-journal-bookmark"></i>
+                                کتاب‌ها
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('my_purchases') }}">
+                                <i class="bi bi-bag-check"></i>
+                                خریدهای من
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('user_dashboard') }}">
+                                <i class="bi bi-speedometer2"></i>
+میزکار                                  
+                            </a>
+                        </li>
+
+                        <li class="nav-item position-relative">
+                            <a class="nav-link" href="{{ url_for('messages') }}">
+                                <i class="bi bi-chat-dots"></i>
+                                پیام‌ها
+                                {% if current_user.is_authenticated %}
+                                    {% set unread_count = get_unread_messages_count(current_user.id) %}
+                                    {% if unread_count > 0 %}
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; padding: 0.2em 0.4em;">
+                                            {{ unread_count }}
+                                        </span>
+                                    {% endif %}
+                                {% endif %}
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                
+                <!-- سمت راست ناوبار (ورود/پروفایل/ادمین) -->
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                        <!-- Admin management dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle admin-menu-toggle d-flex align-items-center gap-2"
+                               href="#" id="adminDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="admin-badge-icon"><i class="bi bi-shield-lock-fill"></i></span>
+                                <span>پنل مدیریت</span>
+                            </a>
+
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
+                                <li><h6 class="dropdown-header">میز کار مدیریت</h6></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
+                                        <span class="item-icon"><i class="bi bi-speedometer2"></i></span>
+                                        <span>کنسول مدیریت</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('upload_book') }}">
+                                        <span class="item-icon"><i class="bi bi-upload"></i></span>
+                                        <span>بارگذاری کتاب</span>
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">گزارش‌ها</h6></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('advanced_reports') }}">
+                                        <span class="item-icon"><i class="bi bi-graph-up"></i></span>
+                                        <span>گزارش پیشرفته</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_sales') }}">
+                                        <span class="item-icon"><i class="bi bi-graph-up-arrow"></i></span>
+                                        <span>گزارش فروش</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% endif %}
+
+                        <!-- User dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2"
+                               href="#" id="userDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+
+                                {% if current_user.profile and current_user.profile.profile_image %}
+                                    {% set image_filename = current_user.profile.profile_image.split('/')[-1] %}
+                                    <img src="{{ url_for('static', filename='profile_images/' + image_filename) }}"
+                                         class="rounded-circle" width="40" height="40" style="object-fit: cover;">
+                                {% else %}
+                                    <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
+                                {% endif %}
+
+                                <span>{{ current_user.username }}</span>
+                            </a>
+
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><h6 class="dropdown-header">{{ current_user.username }}</h6></li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       href="{{ url_for('profile') }}">
+                                        {% if current_user.profile and current_user.profile.profile_image %}
+                                            <!-- از همان image_filename استفاده می‌کنیم -->
+                                            <img src="{{ url_for('static', filename='profile_images/' + image_filename) }}"
+                                                 class="rounded-circle" width="32" height="32" style="object-fit: cover; flex-shrink: 0;">
+                                        {% else %}
+                                            <span class="item-icon"><i class="bi bi-person-circle"></i></span>
+                                        {% endif %}
+                                        <span>مشخصات کاربری</span>
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider"></li>
+
+                                <li>
+                                    <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                        <span class="item-icon"><i class="bi bi-box-arrow-left"></i></span>
+                                        <span>خروج</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="bi bi-box-arrow-in-left"></i>
+                                ورود
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link btn btn-outline-light btn-sm me-2" href="{{ url_for('register') }}">
+                                <i class="bi bi-person-plus"></i>
+                                ثبت‌نام
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Advertisement Banner -->
+     <!-- خروجی را با تنظیمات زیر بگیرید:
+    Format: MP4 (H.264)
+    Resolution: 1280x720 یا 1920x1080
+    Bitrate: بین 1500 تا 5000 kbps -->
+    <div class="advertisement-banner">
+    <div class="container py-2">
+        <!-- <img src="{{ url_for('static', filename='images/animated-ad.gif') }}" 
+            alt="تبلیغ متحرک" 
+            class="img-fluid" 
+            style="max-height: 200px; border-radius: 8px;"> -->
+        <!-- تبلیغ ویدیویی (جایگزین فلش) -->
+        <video id="adVideo" 
+       controls 
+       playsinline 
+       disablePictureInPicture
+       controlsList="nodownload noplaybackrate nofullscreen"
+       style="width: 100%; max-height: 200px; border-radius: 8px; background: #000;">
+    <source src="{{ url_for('static', filename='videos/ad-banner.mp4') }}" type="video/mp4">
+    مرورگر شما از تگ ویدیو پشتیبانی نمی‌کند.
+</video>
+
+<style>
+/* مخفی کردن دکمه‌های ناخواسته در پخش‌کننده ویدیو */
+#adVideo::-webkit-media-controls-picture-in-picture-button,
+#adVideo::-webkit-media-controls-playback-rate-button,
+#adVideo::-webkit-media-controls-fullscreen-button {
+    display: none !important;
+}
+
+/* استایل برای غیرفعال کردن منوی زمینه */
+#adVideo {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+</style>
+
+<script>
+// تابع برای خواندن کوکی
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+// تابع برای ذخیره کوکی
+function setCookie(name, value, days = 1) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = `expires=${date.toUTCString()}`;
+    document.cookie = `${name}=${value};${expires};path=/`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('adVideo');
+    const videoId = 'adVideoPos_' + window.location.pathname.replace(/\//g, '_');
+    
+    // غیرفعال کردن منوی زمینه (راست‌کلیک)
+    video.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
+    // بارگذاری موقعیت از کوکی
+    const savedTime = getCookie(videoId);
+    if (savedTime) {
+        video.currentTime = parseFloat(savedTime);
+    }
+    
+    // ذخیره موقعیت هر 2 ثانیه
+    let saveInterval;
+    video.addEventListener('play', function() {
+        saveInterval = setInterval(() => {
+            setCookie(videoId, video.currentTime.toString());
+        }, 2000);
+    });
+    
+    video.addEventListener('pause', function() {
+        clearInterval(saveInterval);
+        setCookie(videoId, video.currentTime.toString());
+    });
+    
+    video.addEventListener('ended', function() {
+        document.cookie = `${videoId}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        clearInterval(saveInterval);
+    });
+    
+    // پخش خودکار هنگام نمایش در صفحه
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                video.play().catch(e => console.log('Auto-play prevented:', e));
+            } else {
+                video.pause();
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    observer.observe(video);
+    
+    // ذخیره موقعیت هنگام بسته شدن تب/صفحه
+    window.addEventListener('beforeunload', function() {
+        if (!video.ended) {
+            setCookie(videoId, video.currentTime.toString());
+        }
+    });
+});
+</script>
+        
+        <!-- تبلیغ تصویری
+        <div class="text-center">
+            <a href="https://example.com" target="_blank" class="d-block">
+                <img src="{{ url_for('static', filename='images/your-image.jpg') }}" 
+                     alt="توضیحات تصویر" 
+                     class="img-fluid" 
+                     style="max-height: 150px; border-radius: 8px;">
+            </a> -->
+        </div>
+    </div>
+</div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flashes">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {% if category == 'success' %}
+                            <i class="bi bi-check-circle-fill"></i>
+                        {% elif category == 'danger' %}
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        {% else %}
+                            <i class="bi bi-info-circle-fill"></i>
+                        {% endif %}
+                        <div>{{ message }}</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <h5>درباره ما</h5>
+                    <p class="text-justify">
+                        کتابخانه دیجیتال مرکز ری‌شناسی با هدف دسترسی آسان به منابع علمی و پژوهشی در حوزه ری گردی و گردشگری راه اندازی شده است.
+                    </p>
+                </div>
+                <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
+                    
+                </div>
+                <div class="col-lg-3 col-md-4 mb-4 mb-md-0">
+                    <h5>دسترسی آسان</h5>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('login') }}"><i class="bi bi-chevron-left"></i> ورود به حساب کاربری</a></li>
+                        <li><a href="{{ url_for('register') }}"><i class="bi bi-chevron-left"></i> عضویت در کتابخانه</a></li>
+                        <li><a href="{{ url_for('forgot') }}"><i class="bi bi-chevron-left"></i> بازیابی رمز عبور</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-4">
+                    <h5>ارتباط با ما</h5>
+                    <ul class="footer-links">
+                        <li><i class="bi bi-telephone"></i> 0912-4095124</li>
+                        <li><a href="	"><i class="bi bi-envelope"></i> @yahoo.com</a></li>
+                        <li><i class="bi bi-geo-alt"></i> تهران، شهرری-میدان شهید مدرس، مرکز ری‌شناسی</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p class="mb-0">© ۱۴۰۴ کتابخانه دیجیتال مرکز ری‌شناسی. طراحی و توسعه: <a href="#" class="text-white text-decoration-none">علیرضا قادری</a> - تمامی حقوق محفوظ است.</p>
+                <p class="mb-0">نسخه ۱.۰.۰</p>
+
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // Convert numbers to Persian
+        function toPersianNumber(num) {
+            const persianNumbers = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return num.toString().replace(/\d/g, x => persianNumbers[x]);
+        }
+
+        // Convert all numbers in the document to Persian
+        function convertNumbersToPersian() {
+            // Skip conversion for form elements and their contents
+            const skipSelectors = 'input, textarea, select, [data-no-convert], [data-no-convert] *';
+            const elementsToSkip = document.querySelectorAll(skipSelectors);
+            const skipNode = (node) => {
+                return elementsToSkip.some(el => el.contains(node) || el === node);
+            };
+
+            // Get all text nodes
+            const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: function(node) {
+                        // Skip script, style, and form elements
+                        if (node.parentNode.nodeName === 'SCRIPT' || 
+                            node.parentNode.nodeName === 'STYLE' ||
+                            skipNode(node.parentNode)) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                },
+                false
+            );
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+
+            // Regex to match numbers
+            const numberRegex = /\d+/g;
+            
+            // Process each text node
+            let node;
+            while (node = walker.nextNode()) {
+                if (node.nodeValue.trim()) {
+                    node.nodeValue = node.nodeValue.replace(numberRegex, match => 
+                        match.split('').map(d => toPersianNumber(d)).join('')
+                    );
+                }
+            }
+            
+            // Handle input values and placeholders
+            document.querySelectorAll('input, textarea, [data-number]').forEach(el => {
+                if (el.value) {
+                    el.value = el.value.replace(/\d/g, d => toPersianNumber(d));
+                }
+                if (el.placeholder) {
+                    el.placeholder = el.placeholder.replace(/\d/g, d => toPersianNumber(d));
+                }
+            });
+        }
+
+            
+            // Also convert any dynamically loaded content
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length) {
+                        convertNumbersToPersian();
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+
+        // Enable Bootstrap tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Auto-dismiss flash messages after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            var alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    var bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 5000);
+            });
+        });
+
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mark books as seen when the page loads
+        if (window.location.pathname === '/new_books') {
+            fetch('{{ url_for("mark_books_seen") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    // Update the badge count to 0
+                    const badges = document.querySelectorAll('.new-books-badge');
+                    badges.forEach(badge => {
+                        badge.textContent = '0';
+                        badge.style.display = 'none';
+                    });
+                }
+            }).catch(error => {
+                console.error('Error marking books as seen:', error);
+            });
+        }
+
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Auto-dismiss flash messages after 5 seconds
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            setTimeout(function() {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 5000);
+        });
+    });
+    </script>
+    {% block scripts %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+    <!-- دکمه برگشت به بالا -->
+<button id="backToTop" class="btn btn-primary rounded-circle" title="برگشت به بالا">
+    <i class="bi bi-arrow-up"></i>
+</button>
+
+<style>
+    #backToTop {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: none;
+        z-index: 99;
+        border: none;
+        outline: none;
+        background-color: #0d6efd;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+
+    #backToTop:hover {
+        background-color: #0b5ed7;
+        transform: translateY(-3px);
+    }
+</style>
+
+<script>
+    // نمایش/مخفی کردن دکمه هنگام اسکرول
+    window.onscroll = function() {
+        scrollFunction();
+    };
+
+    function scrollFunction() {
+        const backToTopBtn = document.getElementById("backToTop");
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            backToTopBtn.style.display = "flex";
+            backToTopBtn.style.justifyContent = "center";
+            backToTopBtn.style.alignItems = "center";
+        } else {
+            backToTopBtn.style.display = "none";
+        }
+    }
+
+    // عملکرد کلیک روی دکمه
+    document.getElementById("backToTop").addEventListener("click", function() {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth" // اسکرول نرم به بالا
+        });
+    });
+</script>
+<!-- Add before closing </body> tag in base.html -->
+<!-- <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script> -->
+<!-- قبل از بسته شدن تگ </body> در فایل base.html -->
+<script src="{{ url_for('static', filename='js/html2canvas.min.js') }}"></script>
+
+</body>
+</html>

@@ -1,0 +1,423 @@
+{% extends "base.html" %}
+
+{% block title %}گزارشات پیشرفته{% endblock %}
+
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    <link href="{{ url_for('static', filename='css/fonts.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <style>
+        /* Apply BZAR font to all elements */
+        body, h1, h2, h3, h4, h5, h6, .card, .table, .btn, .form-control, .nav, .dropdown-menu, .dataTables_wrapper {
+            font-family: 'BZAR', Tahoma, Arial, sans-serif !important;
+        }
+        /* Ensure proper RTL support */
+        body {
+            direction: rtl;
+            text-align: right;
+        }
+        .card {
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+        .card-header {
+            font-weight: 600;
+        }
+        .card-header h5 {
+            color: #333333 !important;
+        }
+        .table th {
+            font-weight: 600;
+            background-color: #f8f9fc;
+        }
+        .badge {
+            font-size: 0.85em;
+            padding: 0.4em 0.8em;
+        }
+        .export-btn {
+            margin-left: 0.5rem;
+        }
+        .book-details {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+        }
+        .user-row {
+            cursor: pointer;
+        }
+        .user-row:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- دسته بندی کتاب‌ها -->
+    <div class="card">
+        <div class="card-header bg-primary d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">آمار دسته بندی کتاب‌ها</h5>
+                <small class="text-white-50">تاریخ گزارش: {{ now | to_jalali }}</small>
+            </div>
+            <button class="btn btn-sm btn-light export-btn" onclick="exportToExcel('categoriesTable', 'آمار_دسته_بندی_کتابها')">
+                <i class="fas fa-file-export"></i> خروجی اکسل
+            </button>
+        </div>
+     
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="categoriesTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>نام دسته بندی</th>
+                            <th>تعداد کتاب‌ها</th>
+                            <th>درصد از کل</th>
+                            <th>تعداد خواندن‌ها</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories_stats %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-{{ 
+                                    'primary' if cat.name == 'general' else 
+                                    'success' if cat.name == 'novel' else 
+                                    'info' if cat.name == 'science' else 
+                                    'warning' if cat.name == 'history' else 
+                                    'danger' if cat.name == 'religion' else 'secondary'
+                                }}">
+                                    {{ cat.display_name }}
+                                </span>
+                            </td>
+                            <td>{{ cat.book_count }}</td>
+                            <td>
+                                <div class="progress" style="height: 24px;">
+                                    <div class="progress-bar bg-{{
+                                        'primary' if cat.name == 'general' else 
+                                        'success' if cat.name == 'novel' else 
+                                        'info' if cat.name == 'science' else 
+                                        'warning' if cat.name == 'history' else 
+                                        'danger' if cat.name == 'religion' else 'secondary'
+                                    }}" role="progressbar" 
+                                    style="width: {{ (cat.book_count / total_books * 100) if total_books > 0 else 0 }}%">
+                                        {{ "%.1f"|format((cat.book_count / total_books * 100) if total_books > 0 else 0) }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ cat.total_reads or 0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- کتاب‌های برتر -->
+    <div class="card">
+        <div class="card-header bg-success d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">کتاب‌های برتر</h5>
+            <button class="btn btn-sm btn-light export-btn" onclick="exportToExcel('topBooksTable', 'کتابهای_برتر')">
+                <i class="fas fa-file-export"></i> خروجی اکسل
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="topBooksTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>عنوان کتاب</th>
+                            <th>نویسنده</th>
+                            <th>دسته بندی</th>
+                            <th>تعداد نشانک‌ها</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for book in top_books %}
+                        <tr>
+                            <td>{{ book.title }}</td>
+                            <td>{{ book.author or 'نامشخص' }}</td>
+                            <td>
+                                <span class="badge bg-{{
+                                    'primary' if book.category == 'general' else 
+                                    'success' if book.category == 'novel' else 
+                                    'info' if book.category == 'science' else 
+                                    'warning' if book.category == 'history' else 
+                                    'danger' if book.category == 'religion' else 'secondary'
+                                }}">
+                                    {{ category_display_names.get(book.category, book.category) }}
+                                </span>
+                            </td>
+                            <td>{{ book.bookmark_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- کاربران فعال -->
+    <div class="card">
+        <div class="card-header bg-info d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">کاربران فعال</h5>
+            <button class="btn btn-sm btn-light export-btn" onclick="exportToExcel('activeUsersTable', 'کاربران_فعال')">
+                <i class="fas fa-file-export"></i> خروجی اکسل
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="activeUsersTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>نام کاربری</th>
+                            <th>تعداد کتاب‌های خوانده شده</th>
+                            <th>تعداد صفحات مطالعه شده</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in active_users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.books_read or 0 }}</td>
+                            <td>{{ user.pages_read or 0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- کتاب‌های پرمخاطب -->
+    <div class="card">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">کتاب‌های پرمخاطب</h5>
+            <button class="btn btn-sm btn-dark export-btn" onclick="exportToExcel('popularBooksTable', 'کتابهای_پرمخاطب')">
+                <i class="fas fa-file-export"></i> خروجی اکسل
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="popularBooksTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>عنوان کتاب</th>
+                            <th>نویسنده</th>
+                            <th>دسته بندی</th>
+                            <th>تاریخ ایجاد</th>
+                            <th>تعداد دفعات مطالعه</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for book in popular_books %}
+                        <tr>
+                            <td>{{ book.title }}</td>
+                            <td>{{ book.author or 'نامشخص' }}</td>
+                            <td>
+                                <span class="badge bg-{{
+                                    'primary' if book.category == 'general' else 
+                                    'success' if book.category == 'novel' else 
+                                    'info' if book.category == 'science' else
+                                    'warning' if book.category == 'history' else
+                                    'danger' if book.category == 'religion' else 'secondary'
+                                }}">
+                                    {{ category_display_names.get(book.category, book.category) }}
+                                </span>
+                            </td>
+                            <td>{{ book.created_at | to_jalali if book.created_at else 'نامشخص' }}</td>
+                            <td>{{ book.read_count or 0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- آمار علاقه‌مندی‌های کاربران -->
+<div class="card mt-4">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">وضعیت علاقه‌مندی‌های کاربران</h5>
+        <button class="btn btn-sm btn-light export-btn" onclick="exportToExcel('userInterestsTable', 'وضعیت_علاقه_مندی_کاربران')">
+            <i class="fas fa-file-export"></i> خروجی اکسل
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="userInterestsTable" class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>نام کاربری</th>
+                        <th>تعداد علاقه‌مندی‌ها</th>
+                        <th>تعداد کتاب‌های خوانده شده</th>
+                        <th>تعداد علاقه‌مندی‌های تحقق یافته</th>
+                        <th>درصد تحقق</th>
+                        <th>نمونه علاقه‌مندی‌ها</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in user_interest_stats %}
+                    <tr class="user-row" data-user-id="{{ user.user_id }}">
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.total_interests }}</td>
+                        <td>{{ user.read_books_count }}</td>
+                        <td>{{ user.fulfilled_interests }} از {{ user.total_interests }}</td>
+                        <td>
+                            <div class="progress" style="height: 24px;">
+                                <div class="progress-bar 
+                                    {% if user.fulfillment_percentage < 25 %}
+                                        bg-danger
+                                    {% elif user.fulfillment_percentage < 50 %}
+                                        bg-warning
+                                    {% elif user.fulfillment_percentage < 75 %}
+                                        bg-info
+                                    {% else %}
+                                        bg-success
+                                    {% endif %}" 
+                                    role="progressbar" 
+                                    style="width: {{ user.fulfillment_percentage }}%"
+                                    aria-valuenow="{{ user.fulfillment_percentage }}" 
+                                    aria-valuemin="0" 
+                                    aria-valuemax="100">
+                                    {{ "%.1f"|format(user.fulfillment_percentage) }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% for interest in user.interests %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ interest }}</span>
+                            {% endfor %}
+                            {% if user.total_interests > 5 %}
+                                <span class="text-muted">+{{ user.total_interests - 5 }} مورد دیگر</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr id="books-{{ user.user_id }}" class="d-none">
+                        <td colspan="6" class="book-details">
+                            <h6>کتاب‌های خوانده شده توسط {{ user.username }}:</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>عنوان کتاب</th>
+                                        <th>نویسنده</th>
+                                        <th>دسته‌بندی</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for book in user.read_books %}
+                                    <tr>
+                                        <td>{{ book.title }}</td>
+                                        <td>{{ book.author }}</td>
+                                        <td>{{ book.category }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">کتابی یافت نشد</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">داده‌ای برای نمایش وجود ندارد</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- Your existing scripts... -->
+
+<!-- Add this script for the collapsible rows -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Make user rows clickable
+        document.querySelectorAll('.user-row').forEach(row => {
+            row.addEventListener('click', function() {
+                const userId = this.getAttribute('data-user-id');
+                const detailsRow = document.getElementById(`books-${userId}`);
+                if (detailsRow) {
+                    detailsRow.classList.toggle('d-none');
+                }
+            });
+        });
+    });
+</script>
+
+<!-- DataTables JS Local -->
+<script src="{{ url_for('static', filename='js/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datatables/dataTables.bootstrap5.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jszip/jszip.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datatables/buttons/dataTables.buttons.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datatables/buttons/buttons.html5.min.js') }}"></script>
+<script>
+// فعال‌سازی جداول
+$(document).ready(function() {
+    // برای تمام جداول به جز جدول علاقه‌مندی‌ها
+    $('table:not(#userInterestsTable)').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/fa.json"
+        },
+        "pageLength": 10,
+        "order": [[1, 'desc']]
+    });
+    
+    // تنظیمات خاص برای جدول علاقه‌مندی‌ها
+    $('#userInterestsTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/fa.json"
+        },
+        "pageLength": 10,
+        "order": [[4, 'desc']], // مرتب‌سازی بر اساس درصد تحقق (ستون پنجم)
+        "columnDefs": [
+            { "orderable": false, "targets": [0, 5] } // غیرفعال کردن مرتب‌سازی برای ستون‌های نام کاربری و علاقه‌مندی‌ها
+        ]
+    });
+});
+
+// تابع برای خروجی اکسل
+function exportToExcel(tableID, filename) {
+    let table = document.getElementById(tableID);
+    let html = table.outerHTML;
+    let url = 'data:application/vnd.ms-excel;base64,';
+    let exportTemplate = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>{table}</table></body></html>';
+    
+    let ctx = {
+        worksheet: 'Sheet1',
+        table: html
+    };
+    
+    let link = document.createElement('a');
+    link.download = filename + '.xls';
+    link.href = url + btoa(unescape(encodeURIComponent(exportTemplate.replace(/{(\w+)}/g, (m, p) => ctx[p]))));
+    link.click();
+}
+
+// نمایش اعلان‌های سیستم
+document.addEventListener('DOMContentLoaded', function() {
+    // فعال‌سازی توکسترها
+    var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    var toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+});
+</script>
+{% endblock %}

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کتابخانه دیجیتال - مرکز ری‌شناسی</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
+    <style>
+    /* فونت‌های فارسی */
+    @font-face {
+        font-family: 'BTitr';
+        src: url("{{ url_for('static', filename='css/fonts/BTitr.woff2') }}") format('woff2'),
+             url("{{ url_for('static', filename='css/fonts/BTitr.woff') }}") format('woff');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: 'Bzar';
+        src: url("{{ url_for('static', filename='css/fonts/BZAR.woff2') }}") format('woff2'),
+             url("{{ url_for('static', filename='css/fonts/BZAR.woff') }}") format('woff');
+        font-weight: bold;
+        font-style: normal;
+        font-display: swap;
+    }
+
+
+        /* استایل‌های پایه */
+        body {
+            font-family: 'BTitr', Tahoma, sans-serif;
+            background-image: url("{{ url_for('static', filename='images/bg.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* استایل کانتینر اصلی */
+        .container {
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        /* استایل‌های تایپوگرافی */
+        h2 {
+        color: #2d3748;
+        font-family: 'BTitr', Tahoma, sans-serif;
+        font-weight: 700;
+        margin-bottom: 1.8rem;
+        position: relative;
+        padding-bottom: 0.8rem;
+        text-align: center;
+        font-size: 1.8rem; /* Slightly larger font size for better visibility */
+    }
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 50%;
+            transform: translateX(50%);
+            width: 60px;
+            height: 3px;
+            border-radius: 3px;
+        }
+
+        /* استایل فرم */
+        .form-label {
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            padding: 0.75rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-family: 'BZar', Tahoma, sans-serif;
+        }
+
+        .form-control:focus {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+        }
+
+        /* استایل دکمه */
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            border: none;
+            padding: 0.75rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+        }
+
+        /* استایل چک‌باکس مرا بخاطر بسپار */
+        .form-check {
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-check-input {
+            margin-left: 0.5rem;
+            margin-top: 0;
+        }
+
+        .form-check-label {
+            color: #4a5568;
+        }
+
+        /* استایل فیلد پسورد */
+        .password-field {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #a0aec0;
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* لینک‌های پایین فرم */
+        .auth-links {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #4a5568;
+        }
+
+        .auth-links a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+            margin: 0 8px;
+        }
+
+        .auth-links a:hover {
+            color: #4338ca;
+            text-decoration: underline;
+        }
+
+        /* استایل آلرت‌ها */
+        .alert {
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            border: none;
+        }
+
+        .alert-dismissible .btn-close {
+            padding: 0.5rem;
+        }
+
+        /* انیمیشن‌ها */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* ریسپانسیو */
+        @media (max-width: 480px) {
+            .container {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>ورود به حساب کاربری</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-4">
+                <label for="username" class="form-label">نام کاربری</label>
+                <input type="text" class="form-control" id="username" name="username" autocomplete="username" required 
+                       placeholder="نام کاربری خود را وارد کنید">
+            </div>
+
+            <div class="mb-4">
+                <label for="password" class="form-label">رمز عبور</label>
+                <div class="password-field">
+                    <input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required 
+                           placeholder="رمز عبور خود را وارد کنید">
+                    <button type="button" class="toggle-password" id="togglePassword">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-check mb-4">
+                <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                <label class="form-check-label" for="remember">
+                    مرا به خاطر بسپار
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary mb-3">ورود به حساب کاربری</button>
+        </form>
+
+        <div class="auth-links">
+            <a href="{{ url_for('register') }}">ثبت‌نام</a>
+            <span>|</span>
+            <a href="{{ url_for('forgot') }}">فراموشی رمز</a>
+            <span>|</span>
+            <a href="{{ url_for('resend_verification') }}">ارسال دوباره ایمیل تأیید</a>
+        </div>
+    </div>
+
+    <script>
+        // نمایش/مخفی کردن رمز عبور
+        document.addEventListener('DOMContentLoaded', function() {
+            const togglePassword = document.querySelector('#togglePassword');
+            const password = document.querySelector('#password');
+            
+            if (togglePassword) {
+                togglePassword.addEventListener('click', function() {
+                    const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                    password.setAttribute('type', type);
+                    this.querySelector('i').classList.toggle('bi-eye');
+                    this.querySelector('i').classList.toggle('bi-eye-slash');
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

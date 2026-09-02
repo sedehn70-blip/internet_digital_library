@@ -1,0 +1,24 @@
+# فایل‌های حساس / محلی — نباید کامیت یا ارسال بشن
+.env
+*.env
+!.env.example
+
+# پایتون
+venv/
+__pycache__/
+*.pyc
+uploads/
+instance/
+logs/
+*.db__pycache__/
+*.pyc
+.venv/
+venv/
+
+# دیتابیس و لاگ‌های محلی
+data/*.db
+logs/*.log
+
+# فایل‌های آپلودی کاربران
+static/uploads/
+backups/

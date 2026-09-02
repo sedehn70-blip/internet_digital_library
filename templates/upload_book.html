@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">آپلود کتاب جدید</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_book') }}">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                            {% for error in form.title.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.author.label(class="form-label") }}
+                            {{ form.author(class="form-control" + (" is-invalid" if form.author.errors else "")) }}
+                            {% for error in form.author.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.description.label(class="form-label") }}
+                            {{ form.description(class="form-control", rows=3) }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.category.label(class="form-label") }}
+                            {{ form.category(class="form-select") }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.price.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.price(class="form-control" + (" is-invalid" if form.price.errors else ""), placeholder="0") }}
+                                <span class="input-group-text">تومان</span>
+                            </div>
+                            <div class="form-text">صفر یا خالی = کتاب رایگان</div>
+                            {% for error in form.price.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.file.label(class="form-label") }}
+                            {{ form.file(class="form-control" + (" is-invalid" if form.file.errors else "")) }}
+                            <div class="form-text">حداکثر حجم فایل: 1 گیکابایت   - فرمت‌های مجاز: PDF, TXT</div>
+                            {% for error in form.file.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.cover.label(class="form-label") }}
+                            {{ form.cover(class="form-control") }}
+                            <div class="form-text">فرمت‌های مجاز: JPG, PNG - حداکثر 2 مگابایت (اختیاری)</div>
+                            {% for error in form.cover.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            {{ form.submit(class="btn btn-primary") }}
+                            <a href="{{ url_for('books') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> انصراف
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

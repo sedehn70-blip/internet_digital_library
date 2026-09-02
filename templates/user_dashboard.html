@@ -1,0 +1,690 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Welcome Card -->
+    <div class="card shadow-sm border-0 mb-4" style="background-color: #048beb;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h4 mb-1">سلام "{{ current_user.username }}" عزیز به مرکز ری شناسی خوش آمدی 👋</h2>
+                    <p class="text-muted mb-0">این پنل کاربری شماست</p>
+               </div>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger d-flex align-items-center">
+                    <i class="bi bi-box-arrow-left ms-1"></i>
+                    خروج
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bookmarks Section -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="h5 mb-0">🔖 کتاب‌های نشانک‌گذاری شده</h3>
+            </div>
+           
+            <div id="bookmarks-container" class="row g-3">
+                <!-- Bookmarks will be loaded here via JavaScript -->
+                <div class="col-12 text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">در حال بارگذاری نشانک‌ها...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reading Progress Section -->
+    <div class="card shadow-sm border-0 mb-4 reading-progress-container" id="book-progress-container">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="h5 mb-0">📚 کتاب‌های در حال مطالعه <span class="badge bg-primary rounded-pill">{{ progresses|length if progresses else 0 }}</span> </h3>
+            </div>
+
+            {% if progresses and progresses|length > 0 %}
+                <div class="row g-3">
+                    <!-- In user_dashboard.html -->
+                    {% for progress in progresses %}
+                        {% if progress.book %}
+                        <div class="col-12" data-book-id="{{ progress.book.id }}">
+                            <div class="card bookmark-card border-2 shadow-sm h-100 book-progress-card">
+                                <div class="row g-0">
+                                    <!-- Book cover and info -->
+                                    <div class="col-md-1 d-flex align-items-center justify-content-center">
+                                        <div class="text-center">
+                                            <div class="fw-bold mb-1">{{ "%.0f"|format(progress.percentage) }}%</div>
+                                            <div class="small text-muted">خوانده شده</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-2 d-flex align-items-center">
+                                        <div style="max-width: 100px;">
+                                            {% if progress.book.cover_filename %}
+                                                <img src="{{ url_for('show_cover', filename=progress.book.cover_filename) }}"
+                                                    class="img-fluid rounded-start w-100" alt="{{ progress.book.title }}">
+                                            {% else %}
+                                                <img src="{{ url_for('static', filename='images/pdf_placeholder.PNG') }}"
+                                                    class="img-fluid rounded-start w-100" alt="PDF Placeholder">
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Book details and progress -->
+                                    <div class="col-md-7">
+                                        <div class="card-body">
+                                            <i class="bi bi-book"></i>  <span class="book-title">{{ progress.book.title }}</span>
+                                            <p class="card-text text-muted">
+                                                <i class="bi bi-person me-1"></i><span class="book-author">{{ progress.book.author or 'ناشناس' }}</span>
+                                            </p>
+                                            <div class="progress mb-2" style="height: 8px;">
+                                                <div class="progress-bar bg-primary" 
+                                                    role="progressbar" 
+                                                    style="width: {{ progress.percentage }}%;" 
+                                                    aria-valuenow="{{ progress.current_page }}" 
+                                                    aria-valuemin="0" 
+                                                    aria-valuemax="{{ progress.total_pages }}">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ progress.current_page }} از {{ progress.total_pages }} صفحه خوانده شده</small>
+                                            
+                                            <!-- دکمه برای اتمام کتاب اگر به انتها رسیده باشد -->
+                                            {% if progress.percentage >= 95 %}
+                                            <div class="mt-2">
+                                                <button class="btn btn-success btn-sm" 
+                                                        onclick="markAsCompleted('{{ progress.book.id }}')">
+                                                    <i class="bi bi-check-circle me-1"></i>علامت‌گذاری به عنوان خوانده شده
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <!-- Action button -->
+                                    <div class="col-md-2 d-flex align-items-center justify-content-center p-3">
+                                        <a href="{{ url_for('view_book', book_id=progress.book.id) }}" 
+                                        class="btn btn-outline-success btn-sm">
+                                            <i class="bi bi-book-half ms-1"></i>مشاهده کتاب
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">هنوز کتابی برای نمایش وجود ندارد.</p>
+                    <a href="{{ url_for('books') }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-book-half ms-1"></i>
+                        مشاهده کتاب‌ها
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    
+    <!-- Quick Actions -->
+    <div class="row g-4">
+<div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center p-4">
+                    <div class="position-relative d-inline-block">
+                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 60px; height: 60px;">
+                            <i class="bi bi-book text-primary" style="font-size: 1.5rem;"></i>
+                            {% set new_books_count = get_new_books_count(current_user) %}
+                            {% if new_books_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ new_books_count }}
+                                <span class="visually-hidden">کتاب‌های جدید</span>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <h5 class="h6 mb-3">کتاب‌های جدید</h5>
+                    <p class="text-muted small mb-3">کتاب‌های تازه اضافه شده به کتابخانه را مشاهده کنید</p>
+                    <a href="{{ url_for('new_books') }}" class="btn btn-outline-primary btn-sm">
+                        مشاهده
+                        <i class="bi bi-book-half ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="col-md-4">
+             <div class="card border-0 shadow-sm h-100">
+                <!-- <div class="card-body text-center p-4">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 60px; height: 60px;">
+                        <i class="bi bi-bookmark-check text-success" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h5 class="h6 mb-3">ادامه مطالعه</h5>
+                    <p class="text-muted small mb-3">به خواندن کتاب قبلی خود ادامه دهید</p>
+                    {% if current_user.last_read_book_id %}
+                        <a href="{% if current_user.last_read_book and current_user.last_read_book.category == 'pdf' %}{{ url_for('read_pdf', book_id=current_user.last_read_book_id) }}{% else %}{{ url_for('read_book', book_id=current_user.last_read_book_id) }}{% endif %}" 
+                           class="btn btn-outline-success btn-sm">
+                            ادامه مطالعه
+                            <i class="bi bi-arrow-left me-1"></i>
+                        </a>
+                    {% else %}
+                        <p class="text-muted small">کتابی یافت نشد</p>
+                    {% endif %}
+                </div> -->
+            </div>
+        </div> 
+        
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center p-4">
+                    <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 60px; height: 60px;">
+                        <i class="bi bi-star text-info" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h5 class="h6 mb-3">پیشنهاد ویژه</h5>
+                    <p class="text-muted small mb-3">کتاب‌های پیشنهادی مخصوص شما</p>
+                    <!-- <a href="{{ url_for('books') }}" class="btn btn-outline-info btn-sm"> -->
+                        به زودی
+                        <i class="bi bi-book-half ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        
+    </div>
+
+    <!-- Books Being Read by Multiple Users -->
+    <div class="card shadow-sm border-0 mb-4 mt-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="h5 mb-0">📚 کتاب‌های در حال مطالعه توسط دیگران</h3>
+                <span class="badge bg-primary">کتاب‌های مشارکتی</span>
+            </div>
+            
+            {% if currently_reading_books and currently_reading_books|length > 0 %}
+                <div class="row g-3">
+                    {% for book in currently_reading_books %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="row g-0 h-100">
+                                <div class="col-4">
+                                    {% if book.cover_filename %}
+                                        <img src="{{ url_for('show_cover', filename=book.cover_filename) }}" 
+                                             class="img-fluid rounded-start h-100 w-100" 
+                                             style="object-fit: cover;" 
+                                             alt="{{ book.title }}">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='images/pdf_placeholder.PNG') }}"
+                                             class="img-fluid rounded-start h-100 w-100"
+                                             style="object-fit: cover;"
+                                             alt="PDF Placeholder">
+                                    {% endif %}
+                                </div>
+                                <div class="col-8">
+                                    <div class="card-body d-flex flex-column h-100">
+                                        <h6 class="card-title mb-1 text-truncate" title="{{ book.title }}">
+                                            {{ book.title }}
+                                        </h6>
+                                        <p class="card-text small text-muted mb-2">
+                                            <i class="bi bi-person me-1"></i>{{ book.author or 'ناشناس' }}
+                                        </p>
+                                        <div class="mt-auto">
+                                            <span class="badge bg-info text-dark">
+                                                <i class="bi bi-people-fill me-1"></i>
+                                                {{ book.readers_count }} نفر در حال مطالعه
+                                            </span>
+                                            <span class="badge bg-secondary ms-1">
+                                                <i class="bi bi-book me-1"></i>
+                                                {{ book.total_reads }} بار خوانده شده
+                                            </span>
+                                            <a href="{{ url_for('view_book', book_id=book.id) }}" 
+                                               class="btn btn-sm btn-outline-primary w-100 mt-2">
+                                                <i class="bi bi-book-half ms-1"></i>مشاهده کتاب
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">هیچ کتابی در حال حاضر توسط چندین کاربر در حال مطالعه نیست.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Completed Books Section -->
+    <div class="card shadow-sm border-0 mb-4" id="completedBooksSection" {% if not completed_books or completed_books|length == 0 %}style="display: none;"{% endif %}>
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="h5 mb-0">✅ کتاب‌های تمام شده</h3>
+                <span class="badge bg-success">{{ completed_books|length if completed_books else 0 }} کتاب</span>
+            </div>
+            
+            <div id="completedBooksContainer" class="row g-3">
+                {% if completed_books and completed_books|length > 0 %}
+                    {% for book in completed_books %}
+                    <div class="col-md-6 col-lg-4" data-completed-book-id="{{ book.id }}">
+                        <div class="card h-100 border-0 shadow-sm completed-book-card">
+                            <div class="row g-0 h-100">
+                                <div class="col-4">
+                                    {% if book.cover_filename %}
+                                        <img src="{{ url_for('show_cover', filename=book.cover_filename) }}" 
+                                             class="img-fluid rounded-start h-100 w-100" 
+                                             style="object-fit: cover;" 
+                                             alt="{{ book.title }}">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='images/pdf_placeholder.PNG') }}"
+                                             class="img-fluid rounded-start h-100 w-100"
+                                             style="object-fit: cover;"
+                                             alt="PDF Placeholder">
+                                    {% endif %}
+                                </div>
+                                <div class="col-8">
+                                    <div class="card-body d-flex flex-column h-100">
+                                        <h6 class="card-title mb-1 text-truncate" title="{{ book.title }}">
+                                            {{ book.title }}
+                                        </h6>
+                                        <p class="card-text small text-muted mb-2">
+                                            <i class="bi bi-person me-1"></i>{{ book.author or 'ناشناس' }}
+                                        </p>
+                                        <div class="mt-auto">
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>تکمیل شده
+                                            </span>
+                                            <a href="{{ url_for('view_book', book_id=book.id) }}" 
+                                               class="btn btn-outline-primary btn-sm w-100 mt-2">
+                                                <i class="bi bi-book-half ms-1"></i>مشاهده کتاب
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="col-12 text-center py-4">
+                        <p class="text-muted">هنوز کتابی را به اتمام نرسانده‌اید.</p>
+                        <a href="{{ url_for('books') }}" class="btn btn-outline-primary mt-2">
+                            <i class="bi bi-book-half ms-1"></i>
+                            مشاهده کتاب‌ها
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function markAsCompleted(bookId) {
+    if (confirm('آیا مطمئن هستید که می‌خواهید این کتاب را به عنوان خوانده شده علامت‌گذاری کنید؟')) {
+        fetch(`/save_reading_progress/${bookId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: `mark_completed=true`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('کتاب با موفقیت به لیست کتاب‌های خوانده شده اضافه شد', 'success');
+                
+                // نمایش پیام تبریک
+                showCompletionMessage(bookId);
+                
+                // انتقال کتاب به بخش تمام شده
+                moveToCompletedBooks(bookId);
+                
+                // حذف از بخش در حال مطالعه
+                removeFromReadingProgress(bookId);
+            } else {
+                showToast('خطا در ثبت وضعیت تکمیل کتاب', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('خطا در برقراری ارتباط با سرور', 'error');
+        });
+    }
+}
+
+// تابع جدید برای تشخیص اتمام کتاب و انتقال خودکار
+function checkBookCompletion(bookId, currentPage, totalPages) {
+    if (currentPage >= totalPages) {
+        // نمایش پیام تبریک
+        showCompletionMessage(bookId);
+        
+        // انتقال کتاب به بخش تمام شده
+        moveToCompletedBooks(bookId);
+        
+        // حذف از بخش در حال مطالعه
+        removeFromReadingProgress(bookId);
+    }
+}
+
+// نمایش پیام تبریک برای تکمیل کتاب
+function showCompletionMessage(bookId) {
+    const message = `
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-trophy-fill me-2"></i>
+            <strong>تبریک!</strong> شما این کتاب را با موفقیت به اتمام رسانده‌اید!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // اضافه کردن پیام به صفحه
+    const container = document.getElementById('book-progress-container');
+    if (container) {
+        container.insertAdjacentHTML('afterbegin', message);
+    }
+}
+
+// انتقال کتاب به بخش تمام شده
+function moveToCompletedBooks(bookId) {
+    // به جای ایجاد کارت داینامیک، صفحه را رفرش می‌کنیم تا داده‌ها از سرور بارگذاری شوند
+    // این کار باعث می‌شود کتاب‌های تمام شده پس از رفرش صفحه باقی بمانند
+    setTimeout(() => {
+        window.location.reload();
+    }, 1000); // 1 ثانیه تأخیر برای نمایش پیام تبریک
+}
+
+// حذف کتاب از بخش در حال مطالعه
+function removeFromReadingProgress(bookId) {
+    const progressCard = document.querySelector(`[data-book-id="${bookId}"]`);
+    if (progressCard) {
+        // انیمیشن محو شدن
+        progressCard.style.transition = 'opacity 0.5s, transform 0.5s';
+        progressCard.style.opacity = '0';
+        progressCard.style.transform = 'scale(0.9)';
+        
+        // حذف بعد از انیمیشن
+        setTimeout(() => {
+            progressCard.remove();
+            
+            // بررسی اگر کتاب دیگری در حال مطالعه نیست
+            const remainingBooks = document.querySelectorAll('[data-book-id]');
+            if (remainingBooks.length === 0) {
+                showNoBooksMessage();
+            }
+        }, 500);
+    }
+}
+
+// نمایش پیام عدم وجود کتاب در حال مطالعه
+function showNoBooksMessage() {
+    const container = document.querySelector('.reading-progress-container');
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <p class="text-muted">هیچ کتابی در حال حاضر در حال مطالعه ندارید.</p>
+                <a href="/books" class="btn btn-primary mt-2">
+                    <i class="bi bi-book-half ms-1"></i> مشاهده کتاب‌ها
+                </a>
+            </div>
+        `;
+    }
+}
+</script>
+<script>
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toastContainer = document.getElementById('toast-container') || (() => {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '1090';
+        document.body.appendChild(container);
+        return container;
+    })();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast show align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+    toast.role = 'alert';
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>`;
+    
+    toastContainer.appendChild(toast);
+    
+    // Auto-remove toast after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+            if (toastContainer.children.length === 0) {
+                toastContainer.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        const response = await fetch('/get_bookmarks');
+        const bookmarks = await response.json();
+        const container = document.getElementById('bookmarks-container');
+        
+        if (!bookmarks || bookmarks.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <p class="text-muted">هنوز کتابی را نشانک‌گذاری نکرده‌اید.</p>
+                    <a href="{{ url_for('books') }}" class="btn btn-outline-primary mt-2">
+                        <i class="bi bi-book-half ms-1"></i> مشاهده کتاب‌ها
+                    </a>
+                </div>`;
+            return;
+        }
+        
+        let html = '';
+        bookmarks.forEach(book => {
+            const coverUrl = book.cover_url || '#';
+            const bookUrl = `/view_book/${book.id}`;
+            
+            html += `
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm book-card">
+                    <div class="row g-0 h-100">
+                        <div class="col-4">
+                            <div class="h-100 d-flex align-items-center justify-content-center p-3 bg-light">
+                                ${book.cover_url ? 
+                                    `<img src="${book.cover_url}" class="img-fluid rounded" style="max-height: 120px; object-fit: contain;" alt="${book.title}">` : 
+                                    `<i class="bi bi-journal-text text-muted" style="font-size: 3rem;"></i>` 
+                                }
+                            </div>
+                        </div>
+                        <div class="col-8">
+                            <div class="card-body d-flex flex-column h-100">
+                                <h5 class="card-title text-truncate" title="${book.title}">${book.title}</h5>
+                                ${book.author ? `<p class="card-text text-muted small mb-2">${book.author}</p>` : ''}
+                                <div class="mt-auto d-flex justify-content-between align-items-center">
+                                    <a href="${bookUrl}" class="btn btn-outline-success btn-sm me-2">
+                                        ادامه مطالعه
+                                    </a>
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        
+        container.innerHTML = html;
+        
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.delete-bookmark').forEach(button => {
+            button.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const bookId = this.getAttribute('data-book-id');
+                const page = this.getAttribute('data-page');
+                const button = this;
+                const card = this.closest('.bookmark-card');
+                
+                const bookmarkId = button.getAttribute('data-bookmark-id');
+                if (!bookmarkId) {
+                    console.error('Bookmark ID not found');
+                    return;
+                }
+                
+                if (confirm('آیا از حذف این نشانک مطمئن هستید؟')) {
+                    try {
+                        button.disabled = true;
+                        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                        
+                        const response = await fetch(`/toggle_bookmark/${bookId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({
+                                action: 'remove',
+                                page: page,
+                                bookmark_id: bookmarkId  // Make sure this is being sent
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({}));
+                            throw new Error(errorData.error || 'خطا در حذف نشانک');
+                        }
+
+                        const result = await response.json();
+                        if (result.success) {
+                            // Show toast notification
+                            showToast('نشانک با موفقیت حذف شد', 'success');
+                            
+                            // Fade out and remove the bookmark card
+                            if (card) {
+                                card.style.transition = 'opacity 0.3s';
+                                card.style.opacity = '0';
+                                setTimeout(() => {
+                                    card.remove();
+                                    // If no bookmarks left, show a message
+                                    if (!document.querySelector('.bookmark-card')) {
+                                        container.innerHTML = `
+                                            <div class="col-12 text-center py-5">
+                                                <div class="text-muted">
+                                                    <i class="bi bi-bookmark-x display-4 d-block mb-3"></i>
+                                                    <p class="h5">نشانکی یافت نشد</p>
+                                                    <p class="text-muted">شما هنوز هیچ نشانکی اضافه نکرده‌اید.</p>
+                                                </div>
+                                            </div>`;
+                                    }
+                                }, 300);
+                            }    
+                        } else {
+                            throw new Error(result.error || 'خطا در حذف نشانک');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting bookmark:', error);
+                        showToast(error.message || 'خطا در حذف نشانک', 'error');
+                        button.disabled = false;
+                        button.innerHTML = '<i class="bi bi-trash"></i>';
+                    }
+                }
+            });
+        });
+        
+    } catch (error) {
+        console.error('خطا در بارگذاری نشانک‌ها:', error);
+        document.getElementById('bookmarks-container').innerHTML = `
+            <div class="col-12 text-center py-4 text-danger">
+                <p>خطا در بارگذاری نشانک‌ها. لطفاً صفحه را مجدداً بارگذاری کنید.</p>
+                <button onclick="window.location.reload()" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-arrow-clockwise"></i> تلاش مجدد
+                </button>
+            </div>`;
+    }
+});
+</script>
+
+<style>
+.book-progress-card, .book-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+.book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.book-progress-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.1) !important;
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+
+.bookmark-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.bookmark-card:hover {
+    background-color: #e9ecef;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* استایل‌های جدید برای کتاب‌های تمام شده */
+.completed-book-card {
+    border-left: 4px solid #28a745 !important;
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+}
+
+.completed-book-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.15) !important;
+}
+
+#completedBooksSection {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-success {
+    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+}
+</style>
+{% endblock %}

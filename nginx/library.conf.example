@@ -1,0 +1,33 @@
+# nginx/library.conf.example
+#
+# نمونه‌ی تنظیمات nginx به‌عنوان reverse proxy جلوی gunicorn.
+# همین الان (بدون دامنه) با IP سرور کار می‌کنه. وقتی دامنه گرفتی، خط
+# server_name رو با دامنه‌ی واقعی پر کن و برای SSL رایگان از certbot استفاده
+# کن (certbot خودش این فایل رو برای اضافه‌کردن بخش HTTPS ویرایش می‌کنه):
+#
+#   sudo apt install certbot python3-certbot-nginx
+#   sudo certbot --nginx -d your-domain.example -d www.your-domain.example
+#
+# بعد از اون certbot به‌صورت خودکار تمدید هم می‌شه (systemd timer داره).
+
+server {
+    listen 80;
+    server_name _;   # بعداً: your-domain.example www.your-domain.example
+
+    client_max_body_size 100M;   # هماهنگ با MAX_CONTENT_LENGTH توی app.py
+
+    location /static/ {
+        alias /app/static/;
+        expires 30d;
+        access_log off;
+    }
+
+    location / {
+        proxy_pass http://web:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+<style>
+    .message-content {
+        color: #000000 !important; /* رنگ مشکی برای متن پیام‌ها */
+    }
+    
+    /* برای مطمئن شدن از خوانایی متن در پس‌زمینه‌های مختلف */
+    .bg-light .message-content,
+    .bg-light .message-content * {
+        color: #000000 !important; /* رنگ مشکی برای پیام‌های دریافتی */
+    }
+    
+    .bg-primary .message-content,
+    .bg-primary .message-content * {
+        color: #ffffff !important; /* رنگ سفید برای پیام‌های ارسالی (که پس‌زمینه آبی دارند) */
+    }
+</style>
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{{ url_for('messages') }}" class="btn btn-sm btn-outline-secondary me-2">
+                            <i class="bi bi-arrow-right"></i> بازگشت
+                        </a>
+                        <span class="h5 mb-0">مکالمه با {{ other_user.username }}</span>
+                    </div>
+                    {% if not other_user.is_admin %}
+                    <a href="{{ url_for('send_message', recipient_id=other_user.id) }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-reply"></i> پاسخ
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body messages-container" style="height: 60vh; overflow-y: auto;">
+                    {% for message in messages %}
+                    <div class="mb-3 {% if message.sender_id == current_user.id %}text-left{% else %}text-right{% endif %}">
+                        <div class="d-flex {% if message.sender_id == current_user.id %}justify-content-end{% else %}justify-content-start{% endif %} mb-1">
+                            <div class="{% if message.sender_id == current_user.id %}bg-primary text-white{% else %}bg-light{% endif %} p-3 rounded" 
+                                 style="max-width: 70%;">
+                                <div class="message-content">
+                                    {{ message.content|nl2br }}
+                                </div>
+                                <div class="message-time text-muted small mt-1" style="font-size: 0.8rem;">
+                                    {{ message.timestamp|timesince }} پیش
+                                    {% if message.sender_id == current_user.id %}
+                                        {% if message.is_read %}
+                                            <i class="bi bi-check-all text-info"></i>
+                                        {% else %}
+                                            <i class="bi bi-check"></i>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted my-5">
+                        هیچ پیامی در این مکالمه وجود ندارد.
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="card-footer">
+                    <form method="POST" action="{{ url_for('send_message', recipient_id=other_user.id) }}">
+                        {{ form.hidden_tag() }}
+                        <div class="input-group">
+                            {{ form.content(class="form-control", placeholder="پیام خود را بنویسید...", rows="2") }}
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> ارسال
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-scroll to bottom of messages
+    const container = document.querySelector('.messages-container');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0"><i class="bi bi-graph-up-arrow me-1"></i> گزارش فروش</h1>
+        <a href="{{ url_for('admin_export_excel') }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel me-1"></i> خروجی اکسل
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body text-center">
+            <p class="text-muted mb-1">مجموع درآمد</p>
+            <h2 class="text-success">{{ total_revenue|comma_separated }} تومان</h2>
+            <p class="text-muted mb-0">از {{ purchases|length|comma_separated }} خرید موفق</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>کتاب</th>
+                            <th>خریدار</th>
+                            <th>مبلغ (تومان)</th>
+                            <th>کد پیگیری</th>
+                            <th>تاریخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in purchases %}
+                        <tr>
+                            <td>{{ p.book.title }}</td>
+                            <td>{{ p.user.username }}</td>
+                            <td>{{ p.amount|comma_separated }}</td>
+                            <td>{{ p.ref_number or '-' }}</td>
+                            <td>{{ p.paid_at|jalali }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">هنوز فروشی ثبت نشده است.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

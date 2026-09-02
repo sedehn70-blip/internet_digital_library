@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">ویرایش کتاب</h2>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="form-group mb-3">
+                            {{ form.title.label(class="form-label") }}
+                            {{ form.title(class="form-control" + (' is-invalid' if form.title.errors else ''), value=book.title) }}
+                            {% for error in form.title.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            {{ form.author.label(class="form-label") }}
+                            {{ form.author(class="form-control" + (' is-invalid' if form.author.errors else ''), value=book.author) }}
+                            {% for error in form.author.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            {{ form.category.label(class="form-label") }}
+                            {{ form.category(class="form-select" + (' is-invalid' if form.category.errors else '')) }}
+                            {% for error in form.category.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                            <script>
+                                // Set the current category as selected
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const categorySelect = document.getElementById('{{ form.category.id }}');
+                                    const currentCategory = '{{ book.category }}';
+                                    for (let i = 0; i < categorySelect.options.length; i++) {
+                                        if (categorySelect.options[i].value === currentCategory) {
+                                            categorySelect.selectedIndex = i;
+                                            break;
+                                        }
+                                    }
+                                });
+                            </script>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            {{ form.price.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.price(class="form-control" + (' is-invalid' if form.price.errors else '')) }}
+                                <span class="input-group-text">تومان</span>
+                            </div>
+                            <div class="form-text">صفر = کتاب رایگان</div>
+                            {% for error in form.price.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label class="form-label">تصویر جلد فعلی:</label>
+                            {% if book.cover_filename %}
+                                <div class="mb-2">
+                                    <img src="{{ url_for('static', filename='covers/' + book.cover_filename) }}" 
+                                         alt="{{ book.title }}" 
+                                         class="img-thumbnail" 
+                                         style="max-height: 200px;">
+                                </div>
+                            {% else %}
+                                <div class="text-muted mb-2">تصویر جلد موجود نیست</div>
+                            {% endif %}
+                            <small class="form-text text-muted">برای تغییر تصویر، تصویر جدیدی انتخاب کنید (اختیاری).</small>
+                        </div>
+                        
+                        <div class="form-group mb-4">
+                            {{ form.cover.label(class="form-label") }}
+                            {{ form.cover(class="form-control" + (' is-invalid' if form.cover.errors else '')) }}
+                            <div class="form-text">فقط فایل‌های تصویری (JPG, JPEG, PNG) قابل قبول هستند.</div>
+                            {% for error in form.cover.errors %}
+                                <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                            <a href="{{ url_for('books') }}" class="btn btn-secondary">انصراف</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+
+            {% if payment_mode == 'sandbox' %}
+            <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-cone-striped"></i>
+                <div>
+                    درگاه پرداخت در حالت <strong>آزمایشی</strong> است. هیچ مبلغ واقعی کسر نمی‌شود؛
+                    این فقط برای تست مسیر خرید است.
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex gap-3">
+                        {% if book.cover_filename %}
+                        <img src="{{ url_for('show_cover', filename=book.cover_filename) }}"
+                             style="width:110px;height:150px;object-fit:cover;border-radius:.5rem;">
+                        {% endif %}
+                        <div>
+                            <h4 class="mb-1">{{ book.title }}</h4>
+                            <p class="text-muted mb-2">
+                                <i class="bi bi-person"></i> {{ book.author or 'ناشناس' }}
+                            </p>
+                            <div class="fs-4 fw-bold text-primary">
+                                {{ book.price|comma_separated }} تومان
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    {% if pending %}
+                    <div class="alert alert-info">
+                        یک تلاش پرداخت ناتمام برای این کتاب دارید.
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('checkout_book', book_id=book.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-credit-card me-1"></i>
+                            پرداخت و خرید کتاب
+                        </button>
+                    </form>
+
+                    <a href="{{ url_for('books') }}" class="btn btn-outline-secondary w-100 mt-2">
+                        <i class="bi bi-arrow-right me-1"></i> بازگشت به کتاب‌ها
+                    </a>
+
+                    <p class="text-muted small mt-3 mb-0">
+                        <i class="bi bi-shield-check"></i>
+                        بعد از تایید پرداخت، این کتاب برای همیشه در «خریدهای من» در دسترس شما خواهد بود.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

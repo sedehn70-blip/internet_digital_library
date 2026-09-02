@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>کتابخانه دیجیتال - مرکز ری شناسی</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+
+<style>
+
+/* فونت‌ها */
+@font-face {
+    font-family: 'BTitr';
+    src: url("{{ url_for('static', filename='fonts/B_Titr.ttf') }}");
+}
+
+@font-face {
+    font-family: 'BZar';
+    src: url("{{ url_for('static', filename='fonts/B_Zar.ttf') }}");
+}
+
+/* بدنه با زر */
+body { 
+    font-family:'BZar', Tahoma, sans-serif; 
+    background:#f0f2f5; 
+    padding-top:50px;
+}
+
+/* تیترها با تیتر */
+h2, .book-title {
+    font-family: 'BTitr';
+}
+
+/* باقیمانده عناصر */
+.book-container { 
+    max-width:900px; 
+    margin:auto; 
+    background:#fff; 
+    border-radius:20px; 
+    padding:30px; 
+    box-shadow:0 15px 30px rgba(0,0,0,0.1);
+}
+
+.txt-content { 
+    background:#f7f7f7; 
+    border-left:5px solid #6c63ff; 
+    padding:20px; 
+    border-radius:12px; 
+    max-height:500px; 
+    overflow-y:auto; 
+    margin-bottom:20px; 
+    white-space:pre-wrap; 
+    line-height:1.6;
+}
+
+.form-control { border-radius:10px;}
+
+.btn-save { 
+    background:#28a745; 
+    border:none; 
+    font-weight:600; 
+    transition:0.3s; 
+}
+
+.btn-save:hover { background:#218838;}
+
+.btn-back { 
+    background:#6c757d; 
+    border:none; 
+    font-weight:600; 
+    margin-top:20px; 
+    transition:0.3s;
+}
+
+.btn-back:hover { background:#5a6268;}
+
+</style>
+</head>
+<body>
+<div class="book-container">
+
+    <h2 class="book-title">{{ book.title }}</h2>
+    <p><strong>نویسنده:</strong> {{ book.author or 'ناشناس' }}</p>
+
+    <div class="txt-content" id="txt-content">
+        {{ book.content or 'محتوایی برای نمایش وجود ندارد.' }}
+    </div>
+
+    <form method="POST" class="mb-3">
+        <label class="form-label">ذخیره موقعیت فعلی (خط):</label>
+        <input type="number" name="position" value="{{ progress.position }}" class="form-control mb-2">
+        <button class="btn btn-save w-100">ذخیره</button>
+    </form>
+
+    <a href="{{ url_for('books') }}" class="btn btn-back w-100">بازگشت به کتاب‌ها</a>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const txtContent = document.getElementById("txt-content");
+    const savedPosition = {{ progress.position or 0 }};
+    if(txtContent && savedPosition) {
+        const lines = txtContent.innerText.split("\n");
+        let charCount = 0;
+        for(let i = 0; i < savedPosition && i < lines.length; i++){
+            charCount += lines[i].length + 1;
+        }
+        txtContent.scrollTop = charCount * 1.2;
+    }
+});
+</script>
+
+</body>
+</html>

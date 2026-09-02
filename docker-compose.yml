@@ -1,0 +1,64 @@
+# docker-compose.yml — کل استک (برنامه + PostgreSQL + nginx) با یک دستور بالا میاد.
+#
+# قبل از اجرا: cp .env.example .env و مقادیرش رو پر کن.
+# اجرا:        docker compose up -d --build
+# لاگ‌ها:      docker compose logs -f web
+# توقف:        docker compose down            (داده‌ها می‌مونن، چون روی volume هستن)
+#
+# نکته: تا وقتی دامنه/SSL واقعی نداری، همین‌طوری روی پورت 80 بالا میاد و
+# می‌تونی با IP سرور تستش کنی. وقتی دامنه آماده شد، به nginx/library.conf.example
+# نگاه کن.
+
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # داخل شبکه‌ی docker-compose، دیتابیس با نام سرویس "db" پیدا می‌شه —
+      # این مقدار DATABASE_URL توی .env رو override می‌کنه (که برای اجرای
+      # بیرون از docker نوشته شده).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-library_user}:${POSTGRES_PASSWORD:-CHANGE_ME}@db:5432/${POSTGRES_DB:-digital_library}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./static/uploads:/app/static/uploads
+      - ./static/profile_images:/app/static/profile_images
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-digital_library}
+      POSTGRES_USER: ${POSTGRES_USER:-library_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGE_ME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-library_user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # وقتی SSL واقعی گرفتی (مثلاً با certbot)، پورت 443 و ولوم گواهی‌ها رو
+      # هم اینجا اضافه کن — نمونه‌اش توی nginx/library.conf.example هست.
+    volumes:
+      - ./nginx/library.conf.example:/etc/nginx/conf.d/default.conf:ro
+      - ./static:/app/static:ro
+    depends_on:
+      - web
+
+volumes:
+  pgdata:

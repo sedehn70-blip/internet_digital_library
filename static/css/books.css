@@ -1,0 +1,105 @@
+/* کارت کتاب */
+.card-book {
+    border-radius: 12px;
+    margin-bottom: 20px;
+    transition: transform 0.3s, box-shadow 0.3s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.card-book:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* استایل‌های تصویر کاور */
+.card-img-container {
+    position: relative;
+    width: 100%;
+    padding-top: 140%; /* نسبت ابعاد 5:7 برای تصاویر */
+    overflow: hidden;
+    background-color: #f8f9fa;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.card-img-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 10px;
+}
+
+/* استایل برای تصاویر جایگزین */
+.card-img-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+/* Pagination */
+.pagination {
+    justify-content: center;
+    margin-top: 25px;
+}
+
+/* Lazy Loading placeholder */
+.lazyload {
+    opacity: 0;
+    transition: opacity 0.5s;
+}
+.lazyloaded {
+    opacity: 1;
+}
+
+/* بهبود نمایش عنوان و نویسنده */
+.card-body {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.card-title {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+    height: 2.8em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.text-muted {
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+/* دکته‌های کارت */
+.book-actions {
+    margin-top: auto;
+    padding-top: 10px;
+}
+
+/* بهبود نمایش در اندازه‌های مختلف صفحه */
+@media (max-width: 768px) {
+    .card-img-container {
+        padding-top: 120%;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+        height: 2.6em;
+    }
+}

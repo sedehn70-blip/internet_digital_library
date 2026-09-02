@@ -1,0 +1,24 @@
+---- ERROR LOG (Wed 11/26/2025 21:44:38.88) ---- 
+ERROR: To modify pip, please run the following command:
+D:\digital_library\.venv\Scripts\python.exe -m pip install --upgrade pip
+
+[notice] A new release of pip is available: 24.0 -> 25.3
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+[notice] A new release of pip is available: 24.0 -> 25.3
+[notice] To update, run: python.exe -m pip install --upgrade pip
+Traceback (most recent call last):
+  File "D:\digital_library\app.py", line 919, in <module>
+    app = create_app()
+          ^^^^^^^^^^^^
+  File "D:\digital_library\app.py", line 611, in create_app
+    @app.route('/new_books')
+     ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\digital_library\.venv\Lib\site-packages\flask\scaffold.py", line 449, in decorator
+    self.add_url_rule(rule, endpoint, f, **options)
+  File "D:\digital_library\.venv\Lib\site-packages\flask\scaffold.py", line 50, in wrapper_func
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\digital_library\.venv\Lib\site-packages\flask\app.py", line 1361, in add_url_rule
+    raise AssertionError(
+AssertionError: View function mapping is overwriting an existing endpoint function: new_books

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>کتابخانه دیجیتال - مرکز ری‌شناسی</title>
+<!-- Bootstrap RTL CSS Local -->
+<link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+
+<!-- Bootstrap Icons Local -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+<style>
+
+/* --- فونت‌ها --- */
+@font-face {
+    font-family: 'BTitr';
+    src: url("{{ url_for('static', filename='css/fonts/BTitr.woff2') }}") format('woff2'),
+         url("{{ url_for('static', filename='css/fonts/BTitr.woff') }}") format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'BZar';
+    src: url("{{ url_for('static', filename='css/fonts/BZAR.woff2') }}") format('woff2'),
+         url("{{ url_for('static', filename='css/fonts/BZAR.woff') }}") format('woff');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* --- متن اصلی با زر --- */
+body {
+    font-family: 'BZar', Tahoma, sans-serif;
+    background: #f3f4f6;
+}
+
+/* --- تیترها با تیتر --- */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'BTitr';
+}
+
+.container {
+    max-width: 400px;
+    margin-top: 60px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2 class="mb-4 text-center">فراموشی رمز عبور (روش قدیمی)</h2>
+    <p class="text-center text-muted small">اگر ایمیلی برای حساب خود ثبت کرده‌اید، بهتر است از <a href="{{ url_for('forgot') }}">بازیابی با ایمیل</a> استفاده کنید.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('forgot_recovery') }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+            <label for="username" class="form-label">نام کاربری</label>
+            <input type="text" class="form-control" id="username" name="username" autocomplete="username" required>
+        </div>
+        <div class="mb-3">
+            <label for="recovery" class="form-label">کد بازیابی</label>
+            <input type="text" class="form-control" id="recovery" name="recovery" required>
+        </div>
+        <div class="mb-3">
+            <label for="new_password" class="form-label">رمز عبور جدید</label>
+            <input type="password" class="form-control" id="new_password" name="new_password"
+                   autocomplete="new-password" minlength="8" required>
+            <div class="form-text">حداقل ۸ کاراکتر</div>
+        </div>
+        <button type="submit" class="btn btn-warning w-100">تغییر رمز</button>
+    </form>
+
+    <p class="mt-3 text-center">
+        <a href="{{ url_for('login') }}">بازگشت به ورود</a>
+    </p>
+</div>
+
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+
+
+/* تعریف فونت برای حالت‌های مختلف (اختیاری) */
+@font-face {
+    font-family: 'BTitr';
+    src: url('../fonts/BTitr-Bold.woff2') format('woff2'),
+         url('../fonts/BTitr-Bold.woff') format('woff'),
+         url('../fonts/BTitr-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'BZar';
+    src: url('../fonts/BZar-Bold.woff2') format('woff2'),
+         url('../fonts/BZar-Bold.woff') format('woff'),
+         url('../fonts/BZar-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* تعریف استایل‌های پایه */
+body {
+    font-family: 'BZar', 'BTitr', Tahoma, sans-serif;
+    line-height: 1.8;
+}
+
+/* برای عناوین */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'BTitr', 'BZar', Tahoma, sans-serif;
+}
+
+/* برای متن‌های نستعلیق */
+.persian-nastaliq {
+    font-family: 'BZar', 'BTitr', Tahoma, sans-serif;
+    line-height: 2.5;
+}

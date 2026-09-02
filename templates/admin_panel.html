@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل مدیریت کتابخانه دیجیتال</title>
+    
+    <!-- استایل‌های مورد نیاز -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    <link href="{{ url_for('static', filename='css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/plotly-latest.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>    
+    <style>
+        /* فونت‌های فارسی */
+        @font-face {
+            font-family: 'BTitr';
+            src: url("{{ url_for('static', filename='fonts/B_Titr.ttf') }}");
+        }
+        @font-face {
+            font-family: 'BZar';
+            src: url("{{ url_for('static', filename='fonts/B_Zar.ttf') }}");
+        }
+
+        body {
+            font-family: 'BZar', Tahoma, sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'BTitr';
+            color: #2c3e50;
+        }
+
+        .sidebar {
+            background: #2c3e50;
+            min-height: calc(100vh - 40px);
+            border-radius: 15px;
+            padding: 20px 0;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .sidebar .nav-link {
+            color: #ecf0f1;
+            padding: 12px 20px;
+            margin: 5px 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .sidebar .nav-link i {
+            margin-left: 10px;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        .card-dashboard {
+            border: none;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
+            height: 100%;
+        }
+
+        .card-dashboard:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            border-radius: 12px;
+        }
+
+        .stat-card i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .stat-card h3 {
+            font-size: 1.8rem;
+            margin: 10px 0;
+        }
+
+        .stat-card p {
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        .btn-admin {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 8px 20px;
+            transition: all 0.3s;
+        }
+
+        .table-responsive {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- نوار کناری -->
+            <div class="col-md-3 col-lg-2">
+                <div class="sidebar">
+                    <div class="text-center mb-4">
+                        <h4 class="text-white">پنل مدیریت</h4>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-section="dashboard">
+                                <i class="bi bi-speedometer2"></i> پیشخوان
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="users">
+                                <i class="bi bi-people"></i> مدیریت کاربران
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="books">
+                                <i class="bi bi-book"></i> مدیریت کتاب‌ها
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="reports">
+                                <i class="bi bi-graph-up"></i> گزارشات
+                            </a>
+                        </li>
+                        <li class="nav-item mt-4">
+                            <a href="{{ url_for('logout') }}" class="nav-link text-danger">
+                                <i class="bi bi-box-arrow-left"></i> خروج از سیستم
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- محتوای اصلی -->
+            <div class="col-md-9 col-lg-10">
+                <div class="main-content">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 id="page-title">پیشخوان مدیریت</h3>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">مدیر سیستم</span>
+                            <div class="user-avatar">
+                                {{ current_user.username[0]|upper }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- بخش پیشخوان -->
+                    <div id="dashboard-section" class="content-section">
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="stat-card bg-primary">
+                                    <i class="bi bi-people"></i>
+                                    <h3>{{ total_users }}</h3>
+                                    <p>کاربران فعال</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card bg-success">
+                                    <i class="bi bi-book"></i>
+                                    <h3>{{ total_books }}</h3>
+                                    <p>تعداد کتاب‌ها</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card bg-info">
+                                    <i class="bi bi-bookmark-check"></i>
+                                    <h3>{{ total_bookmarks }}</h3>
+                                    <p>نشانک‌ها</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card bg-warning">
+                                    <i class="bi bi-graph-up"></i>
+                                    <h3>{{ "%.1f"|format(avg_books_read) }}</h3>
+                                    <p>میانگین کتاب خوانده شده</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5>کتاب‌های پرطرفدار</h5>
+                                    <canvas id="topBooksChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5>کاربران فعال</h5>
+                                    <canvas id="activeUsersChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- بخش مدیریت کاربران -->
+                    <div id="users-section" class="content-section" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4>مدیریت کاربران</h4>
+                            <button class="btn btn-primary btn-admin" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                                <i class="bi bi-plus-lg"></i> کاربر جدید
+                            </button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="usersTable">
+                                <thead>
+                                    <tr>
+                                        <th>نام کاربری</th>
+                                        <th>ایمیل</th>
+                                        <th>تاریخ عضویت</th>
+                                        <th>آخرین ورود</th>
+                                        <th>وضعیت</th>
+                                        <th>عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in users_list %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-2">
+                                                    {{ user.username[0]|upper }}
+                                                </div>
+                                                {{ user.username }}
+                                                {% if user.is_admin %}
+                                                    <span class="badge bg-danger me-2">مدیر</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.created_at.strftime('%Y/%m/%d') }}</td>
+                                        <td>{{ user.last_login.strftime('%Y/%m/%d %H:%M') if user.last_login else 'ندارد' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if user.is_active else 'secondary' }}">
+                                                {{ 'فعال' if user.is_active else 'غیرفعال' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" title="ویرایش">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                {% if not user.is_admin %}
+                                                <button class="btn btn-outline-danger" title="حذف" 
+                                                        onclick="confirmDeleteUser({{ user.id }}, '{{ user.username }}')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                                <button class="btn btn-outline-secondary" title="ریست رمز"
+                                                        onclick="resetPassword({{ user.id }})">
+                                                    <i class="bi bi-key"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- بخش گزارشات -->
+                    <div id="reports-section" class="content-section" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4>گزارشات و آمار</h4>
+                            <div>
+                                <button class="btn btn-success me-2" onclick="exportToExcel()">
+                                    <i class="bi bi-file-earmark-excel"></i> خروجی اکسل
+                                </button>
+                                <button class="btn btn-primary" onclick="refreshReports()">
+                                    <i class="bi bi-arrow-clockwise"></i> بروزرسانی
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5>توزیع فعالیت کاربران</h5>
+                                    <div id="userActivityChart"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <h5>آمار مطالعه روزانه</h5>
+                                    <canvas id="dailyReadsChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">آمار خواندن کاربران</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table" id="readingStatsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>نام کاربری</th>
+                                                <th>کتاب‌های خوانده شده</th>
+                                                <th>در حال مطالعه</th>
+                                                <th>میانگین پیشرفت</th>
+                                                <th>تعداد نشانک‌ها</th>
+                                                <th>آخرین فعالیت</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for stat in user_stats %}
+                                            <tr>
+                                                <td>{{ stat.username }}</td>
+                                                <td>{{ stat.books_read or 0 }}</td>
+                                                <td>{{ stat.in_progress or 0 }}</td>
+                                                <td>
+                                                    <div class="progress" style="height: 20px;">
+                                                        <div class="progress-bar" role="progressbar" 
+                                                             style="width: {{ stat.avg_progress * 100 if stat.avg_progress else 0 }}%"
+                                                             aria-valuenow="{{ stat.avg_progress * 100 if stat.avg_progress else 0 }}" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                            {{ "%.1f"|format(stat.avg_progress * 100) if stat.avg_progress else '0' }}%
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{{ stat.bookmark_count or 0 }}</td>
+                                                <td>{{ stat.last_activity.strftime('%Y/%m/%d') if stat.last_activity else 'ندارد' }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال تایید حذف کاربر -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تایید حذف کاربر</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>آیا از حذف کاربر "<span id="userToDelete"></span>" مطمئن هستید؟ این عمل قابل بازگشت نیست.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                    <form id="deleteUserForm" method="POST" action="">
+                        <button type="submit" class="btn btn-danger">حذف کاربر</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- اسکریپت‌های مورد نیاز -->
+<script src="{{ url_for('static', filename='js/datatables/jquery.dataTables.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datatables/dataTables.bootstrap5.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jszip/jszip.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datatables/buttons/dataTables.buttons.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/datatables/buttons/buttons.html5.min.js') }}"></script>
+    
+    <script>
+        // فعال‌سازی دیتاتیبل‌ها
+        $(document).ready(function() {
+            $('#usersTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/fa.json"
+                },
+                "order": [[3, "desc"]]
+            });
+
+            $('#readingStatsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/fa.json"
+                },
+                "order": [[1, "desc"]]
+            });
+
+            // تغییر بخش‌های مختلف پنل
+            $('.nav-link').on('click', function(e) {
+                e.preventDefault();
+                const section = $(this).data('section');
+                
+                // آپدیت منوی فعال
+                $('.nav-link').removeClass('active');
+                $(this).addClass('active');
+                
+                // مخفی کردن همه بخش‌ها
+                $('.content-section').hide();
+                
+                // نمایش بخش انتخاب شده
+                $(`#${section}-section`).fadeIn();
+                
+                // آپدیت عنوان صفحه
+                $('#page-title').text($(this).text().trim());
+            });
+        });
+
+        // تایید حذف کاربر
+        function confirmDeleteUser(userId, username) {
+            $('#userToDelete').text(username);
+            $('#deleteUserForm').attr('action', `/admin/delete_user/${userId}`);
+            new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+        }
+
+        // ریست رمز عبور
+        function resetPassword(userId) {
+            Swal.fire({
+                title: 'ریست رمز عبور',
+                text: 'آیا مایل به ریست رمز عبور این کاربر هستید؟',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'بله، ریست شود',
+                cancelButtonText: 'انصراف',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/reset_password/${userId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire(
+                                'موفقیت‌آمیز!',
+                                'رمز عبور با موفقیت ریست شد.',
+                                'success'
+                            );
+                        } else {
+                            throw new Error(data.message || 'خطا در ریست رمز عبور');
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire(
+                            'خطا!',
+                            error.message || 'خطایی رخ داده است.',
+                            'error'
+                        );
+                    });
+                }
+            });
+        }
+
+        // خروجی اکسل
+        function exportToExcel() {
+            window.location.href = "{{ url_for('admin_export_excel') }}";
+        }
+
+        // بروزرسانی گزارشات
+        function refreshReports() {
+            window.location.reload();
+        }
+
+        // نمودار کتاب‌های پرطرفدار
+        const topBooksCtx = document.getElementById('topBooksChart').getContext('2d');
+        new Chart(topBooksCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ top_books|map(attribute='0')|list|tojson|safe }},
+                datasets: [{
+                    data: {{ top_books|map(attribute='1')|list|tojson|safe }},
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+                        '#9966FF', '#FF9F40', '#8AC24A', '#FF5252'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        rtl: true
+                    }
+                }
+            }
+        });
+
+        // نمودار کاربران فعال
+        const activeUsersCtx = document.getElementById('activeUsersChart').getContext('2d');
+        new Chart(activeUsersCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ books_per_user|map(attribute='0')|list|tojson|safe }},
+                datasets: [{
+                    label: 'تعداد کتاب‌های خوانده شده',
+                    data: {{ books_per_user|map(attribute='1')|list|tojson|safe }},
+                    backgroundColor: '#4e73df'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // نمودار فعالیت کاربران
+        const userActivityData = {
+            values: [30, 20, 15, 10, 25],
+            labels: ['خواندن کتاب', 'جستجو', 'نشانک‌گذاری', 'نظر دادن', 'دیگر فعالیت‌ها'],
+            type: 'pie',
+            textinfo: 'label+percent',
+            insidetextorientation: 'radial',
+            marker: {
+                colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+            }
+        };
+
+        Plotly.newPlot('userActivityChart', [userActivityData], {
+            margin: {t: 0, b: 0, l: 0, r: 0},
+            showlegend: true,
+            legend: {
+                orientation: 'h',
+                y: -0.2
+            }
+        }, {responsive: true});
+
+        // نمودار مطالعه روزانه
+        const dailyReadsCtx = document.getElementById('dailyReadsChart').getContext('2d');
+        new Chart(dailyReadsCtx, {
+            type: 'line',
+            data: {
+                labels: ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'],
+                datasets: [{
+                    label: 'تعداد مطالعه (دقیقه)',
+                    data: [45, 60, 30, 80, 50, 70, 90],
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
