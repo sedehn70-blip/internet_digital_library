@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">{{ title or 'تمام کتاب‌ها' }}</h2>
+        {% if show_upload_button %}
+        <a href="{{ url_for('upload_book') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-cloud-upload-fill me-1"></i>
+            آپلود کتاب جدید
+        </a>
+        {% endif %}
+    </div>
+
+    {% if books %}
+    <div class="row g-4">
+        {% for book in books %}
+        <div class="col-md-4 col-lg-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="position-relative mb-3" style="height: 200px; overflow: hidden;">
+                        {% if book.cover_filename %}
+                            <img src="{{ url_for('show_cover', filename=book.cover_filename) }}"
+                                 class="img-fluid rounded"
+                                 style="max-height: 100%; width: auto;"
+                                 alt="{{ book.title }}">
+                        {% else %}
+                            <div class="d-flex align-items-center justify-content-center bg-light rounded" style="height: 100%;">
+                                <i class="bi bi-book text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <h5 class="card-title">{{ book.title }}</h5>
+                    {% if book.author %}
+                        <p class="text-muted small">{{ book.author }}</p>
+                    {% endif %}
+                    {% if book.file_type %}
+                        <p class="text-muted small">
+                            <span class="badge bg-secondary">{{ book.file_type|upper }}</span>
+                        </p>
+                    {% endif %}
+                    {% if book.price and book.price > 0 %}
+                        {% if user_has_access(book) %}
+                            <span class="badge bg-success d-block mb-2">خریداری‌شده</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark d-block mb-2">{{ book.price|comma_separated }} تومان</span>
+                        {% endif %}
+                    {% endif %}
+                    {% if book.price and book.price > 0 and not user_has_access(book) %}
+                    <a href="{{ url_for('buy_book', book_id=book.id) }}"
+                    class="btn btn-warning btn-sm">
+                        خرید کتاب
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('view_book', book_id=book.id) }}"
+                    class="btn btn-outline-primary btn-sm">
+                        مطالعه کتاب
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        در این دسته‌بندی کتابی یافت نشد.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

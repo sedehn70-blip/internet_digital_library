@@ -15,11 +15,15 @@
         /* فونت‌های فارسی */
         @font-face {
             font-family: 'BTitr';
-            src: url("{{ url_for('static', filename='fonts/B_Titr.ttf') }}");
+            src: url("{{ url_for('static', filename='fonts/BTitr.woff2') }}") format('woff2'),
+                 url("{{ url_for('static', filename='fonts/BTitr.woff') }}") format('woff');
+            font-display: swap;
         }
         @font-face {
             font-family: 'BZar';
-            src: url("{{ url_for('static', filename='fonts/B_Zar.ttf') }}");
+            src: url("{{ url_for('static', filename='fonts/BZar.woff2') }}") format('woff2'),
+                 url("{{ url_for('static', filename='fonts/BZar.woff') }}") format('woff');
+            font-display: swap;
         }
 
         body {

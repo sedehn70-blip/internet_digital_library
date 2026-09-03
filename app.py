@@ -9,6 +9,7 @@ import json
 import sqlite3
 import uuid
 import unicodedata
+from urllib.parse import urlparse, urljoin
 from functools import wraps
 from io import BytesIO
 from logging.handlers import RotatingFileHandler
@@ -32,9 +33,6 @@ except ImportError:
 
 import jdatetime
 import pytz
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 import plotly.utils
@@ -67,12 +65,12 @@ from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from payment_gateway import get_gateway, PaymentResult
 
 from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask_bcrypt import Bcrypt  # ایمپورت Bcrypt
 from flask_paginate import Pagination, get_page_parameter, get_per_page_parameter
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_caching import Cache
 from pdf_encoding_fixer import process_pdf_on_upload
 from mail_utils import (
     send_verification_email, send_password_reset_email,
@@ -189,29 +187,55 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def is_safe_url(target):
+    """بررسی安全 بودن URL برای جلوگیری از Open Redirect.
+    فقط URL‌هایی را معتبر می‌داند که به همین هاست (هسته‌ی سایت) هستند و به
+    protocol معتبر دارند و netloc برابر با هاست فعلی کاربر است. مثلاً جلوگیری از
+    /login?next=https://evil.com
+    """
+    if not target:
+        return False
+    try:
+        ref_url = urlparse(request.host_url)
+        test_url = urlparse(urljoin(request.host_url, target))
+        return (
+            test_url.scheme in ('http', 'https') and
+            ref_url.netloc == test_url.netloc
+        )
+    except Exception:
+        return False
+
 # ---------- فرم پروفایل ----------
+CATEGORY_CHOICES = [
+    ('general', 'عمومی'),
+    ('novel', 'رمان'),
+    ('science', 'علمی'),
+    ('history', 'تاریخی'),
+    ('religion', 'مذهبی'),
+    ('historical_religious', 'تاریخی مذهبی'),
+]
+COVER_VALIDATORS = [FileAllowed(['jpg', 'jpeg', 'png'], 'فقط تصاویر مجاز هستند!')]
+PRICE_VALIDATORS = [Optional(), NumberRange(min=0, message='قیمت نمی‌تواند منفی باشد')]
+
 class BookUploadForm(FlaskForm):
     title = StringField('عنوان کتاب', validators=[DataRequired()])
     author = StringField('نویسنده', validators=[DataRequired()])
     description = TextAreaField('توضیحات', validators=[Optional()])
-    category = SelectField('دسته‌بندی', choices=[
-        ('general', 'عمومی'),
-        ('novel', 'رمان'),
-        ('science', 'علمی'),
-        ('history', 'تاریخی'),
-        ('religion', 'مذهبی'),
-        ('historical_religious', 'تاریخی مذهبی')
-    ])
+    category = SelectField('دسته‌بندی', choices=CATEGORY_CHOICES)
     price = IntegerField('قیمت (تومان) — برای رایگان بودن، صفر بگذارید', default=0,
-                          validators=[Optional(), NumberRange(min=0, message='قیمت نمی‌تواند منفی باشد')])
+                          validators=PRICE_VALIDATORS)
     file = FileField('فایل کتاب (PDF، TXT یا EPUB)', validators=[
     DataRequired(),
     FileAllowed(['pdf', 'txt', 'epub'], 'فقط فایل‌های PDF، TXT و EPUB مجاز هستند!')
     ])
-    cover = FileField('تصویر جلد (اختیاری)', validators=[
-        FileAllowed(['jpg', 'jpeg', 'png'], 'فقط تصاویر مجاز هستند!')
-    ])
+    cover = FileField('تصویر جلد (اختیاری)', validators=COVER_VALIDATORS)
     submit = SubmitField('آپلود کتاب')
+
+class EditBookForm(BookUploadForm):
+    """فرم ویرایش کتاب — بدون فیلدهای description و file."""
+    description = None
+    file = None
+    submit = SubmitField('ذخیره تغییرات')
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -506,36 +530,6 @@ def scan_books_folder(BASE_DIR):
 
     return stats
 
-def gen_charts(BASE_DIR):
-    users = User.query.all()
-    labels, sizes = [], []
-    
-    for u in users:
-        cnt = ReadingProgress.query.filter_by(user_id=u.id).count()
-        labels.append(u.username)
-        sizes.append(cnt)
-    
-    if sum(sizes) == 0:
-        labels = ['هیچ داده‌ای']
-        sizes = [1]
-    
-    chart_dir = os.path.join(BASE_DIR, 'static', 'uploads', 'charts')
-    os.makedirs(chart_dir, exist_ok=True)
-    
-    # Generate pie chart
-    plt.figure(figsize=(6, 6))
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%')
-    plt.savefig(os.path.join(chart_dir, 'pie.png'), bbox_inches='tight')
-    plt.close()
-    
-    # Generate bar chart
-    plt.figure(figsize=(8, 4))
-    plt.bar(labels, sizes)
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
-    plt.savefig(os.path.join(chart_dir, 'bar.png'), bbox_inches='tight')
-    plt.close()
-
 def upgrade_database(db_path):
     # safe upgrade: work only if db exists and book table exists
     if not os.path.exists(db_path):
@@ -672,7 +666,13 @@ def format_jalali(dt, default=""):
         dt = _to_tehran_time(dt)
         jalali_date = jdatetime.datetime.fromgregorian(datetime=dt)
         return jalali_date.strftime('%Y/%m/%d %H:%M')
-    except:
+    except Exception as e:
+        try:
+            logging.getLogger(__name__).error(
+                f"format_jalali error for dt={dt!r}: {type(e).__name__}: {e}"
+            )
+        except Exception:
+            pass
         return default
 
 def create_app():
@@ -843,12 +843,8 @@ def create_app():
         upgrade_database(db_path)
         db.create_all()
         ensure_default_admin()
-        try:
-            gen_charts(BASE_DIR)
-            # Removed automatic book scanning on startup to prevent duplicate imports
-            # scan_books_folder(BASE_DIR)  # Uncomment and use this manually when needed
-        except Exception as e:
-            app.logger.error(f"Error during app initialization: {str(e)}")
+        # Removed automatic book scanning on startup to prevent duplicate imports
+        # scan_books_folder(BASE_DIR)  # Uncomment and use this manually when needed
 
     def allowed_file(filename, allowed_extensions=None):
         if allowed_extensions is None:
@@ -856,12 +852,43 @@ def create_app():
         return '.' in filename and \
             filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
+    def _strip_tz(dt):
+        """تبدیل datetime به naive UTC بدون منطقه‌زمانی، برای سازگاری با مقادیر ذخیره‌شده در دیتابیس."""
+        if dt is None:
+            return datetime.min
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+
+    TYPE_TO_DIR = {'pdf': 'pdf', 'txt': 'txt', 'epub': 'epub'}
+    TYPE_TO_MIME = {
+        'pdf': 'application/pdf',
+        'txt': 'text/plain; charset=utf-8',
+        'epub': 'application/epub+zip',
+    }
+
+    def get_book_file_path(book):
+        """مسیر فیزیکی فایل کتاب روی دیسک را بر اساس file_type برمی‌گرداند.
+        نام فایل در فیلد `pdf_filename` نگه‌داری می‌شود (برای همه نوع فایل)."""
+        if not book or not book.pdf_filename or not book.file_type:
+            return None
+        ft = book.file_type.lower()
+        subdir = TYPE_TO_DIR.get(ft)
+        if not subdir:
+            return None
+        return os.path.join(app.config['UPLOAD_FOLDER'], 'books', subdir, book.pdf_filename)
+
+    def get_mime_for_book_type(file_type):
+        if not file_type:
+            return 'application/octet-stream'
+        return TYPE_TO_MIME.get(file_type.lower(), 'application/octet-stream')
+
     def get_new_books_count(user):
         if not user.is_authenticated:
             return 0
-        last_checked = user.last_checked_books or datetime.min.replace(tzinfo=timezone.utc)
+        last_checked = _strip_tz(user.last_checked_books)
         return Book.query.filter(Book.created_at > last_checked).count()
-        
+
     def get_unread_messages_count(user_id):
         if not user_id:
             return 0
@@ -894,7 +921,9 @@ def create_app():
         if not dt:
             return default
         try:
-            diff = datetime.utcnow() - dt
+            # اطمینان از مقایسه‌ی دو مقدار naive UTC با هم، حتی وقتی dt دارای tzinfo باشه
+            dt_naive = _strip_tz(dt)
+            diff = datetime.utcnow() - dt_naive
         except (TypeError, ValueError):
             return default
             
@@ -1135,33 +1164,29 @@ def create_app():
     def get_pdf_page_count(book):
         """تعداد صفحات فایل را برمی‌گرداند بر اساس نوع فایل"""
         try:
-            # تعیین مسیر فایل بر اساس نوع آن
-            if book.file_type.lower() == 'pdf':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'pdf', book.pdf_filename)
+            file_path = get_book_file_path(book)
+            if not file_path:
+                return 100
+            ft = book.file_type.lower()
+            if ft == 'pdf':
                 import PyPDF2
                 with open(file_path, 'rb') as f:
                     pdf_reader = PyPDF2.PdfReader(f)
                     return len(pdf_reader.pages)
-                    
-            elif book.file_type.lower() == 'txt':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'txt', book.pdf_filename)
+            elif ft == 'txt':
                 with open(file_path, 'r', encoding='utf-8') as f:
-                    # تخمین تعداد صفحات بر اساس تعداد خطوط (تقریبی)
                     lines = f.readlines()
-                    return max(1, len(lines) // 50)  # تقریباً 50 خط در هر صفحه
-                    
-            elif book.file_type.lower() == 'epub':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'epub', book.pdf_filename)
+                    return max(1, len(lines) // 50)
+            elif ft == 'epub':
                 from epub_utils import EPUBReader
                 reader = EPUBReader(file_path)
                 metadata = reader.read_epub()
                 if metadata and 'page_count' in metadata:
                     return metadata['page_count']
-                return 100  # مقدار پیش‌فرض برای EPUB
-                
+                return 100
         except Exception as e:
-            app.logger.error(f"Error getting page count for {book.file_type} {book.id}: {str(e)}")
-            return 100  # مقدار پیش‌فرض در صورت بروز خطا
+            app.logger.error(f"Error getting page count for {getattr(book, 'file_type', None)} {getattr(book, 'id', None)}: {str(e)}")
+            return 100
 
     def estimate_total_pages(book):
         """تخمین تعداد صفحات کتاب بر اساس نوع محتوا"""
@@ -1259,9 +1284,6 @@ def create_app():
         # prepare chart data
         book_titles = [b.title for b in top_books]
         book_reads = [b.read_count for b in top_books]
-
-        # generate charts if needed
-        gen_charts(app.config['BASE_DIR'])
 
         return render_template('user_dashboard.html',
                                users=total_users,
@@ -1365,8 +1387,9 @@ def create_app():
     @limiter.limit('10 per minute', methods=['POST'])
     def login():
         if request.method == 'POST':
-            user = User.query.filter_by(username=request.form.get('username')).first()
-            if user and bcrypt.check_password_hash(user.password_hash, request.form.get('password')):
+            username_input = request.form.get('username') or ''
+            user = User.query.filter_by(username=username_input).first()
+            if user and bcrypt.check_password_hash(user.password_hash, request.form.get('password') or ''):
                 # اگه کاربر ایمیل ثبت کرده ولی هنوز تأییدش نکرده، اجازهٔ ورود
                 # نده. (حساب‌های قدیمی که اصلاً ایمیل ندارن مستثنا هستن تا
                 # قفل نشن.)
@@ -1383,10 +1406,13 @@ def create_app():
                     return render_template('login.html')
                 # Update last_login time
                 user.last_login = datetime.utcnow()
+                db.session.add(ActivityLog(user_id=user.id, action='login'))
                 db.session.commit()
                 login_user(user)
                 next_page = request.args.get('next')
-                return redirect(next_page) if next_page else redirect(url_for('index'))
+                if next_page and is_safe_url(next_page):
+                    return redirect(next_page)
+                return redirect(url_for('index'))
             flash('نام کاربری یا رمز عبور نامعتبر است', 'error')
         return render_template('login.html')
 
@@ -1420,7 +1446,13 @@ def create_app():
             user = User.query.filter_by(username=username).first()
             if user and bcrypt.check_password_hash(user.recovery_code, recovery_code):
                 new_password = request.form.get('new_password', '')
-                # هش کردن رمز عبور جدید با Bcrypt
+                confirm_password = request.form.get('confirm_password', '')
+                if not new_password or len(new_password) < 8:
+                    flash('رمز عبور باید حداقل ۸ کاراکتر باشد.', 'danger')
+                    return redirect(url_for('forgot_recovery'))
+                if new_password != confirm_password:
+                    flash('رمز عبور و تکرار آن یکسان نیستند.', 'danger')
+                    return redirect(url_for('forgot_recovery'))
                 user.password_hash = bcrypt.generate_password_hash(new_password).decode('utf-8')
                 db.session.commit()
                 flash('رمز عبور با موفقیت تغییر کرد.', 'success')
@@ -1486,7 +1518,7 @@ def create_app():
     @login_required
     def read_book(book_id):
         book = Book.query.get_or_404(book_id)
-        if book.category != 'pdf':
+        if not book.file_type or book.file_type.lower() != 'pdf':
             flash('این کتاب قابل نمایش نیست', 'error')
             return redirect(url_for('books'))
             
@@ -1518,7 +1550,7 @@ def create_app():
     @login_required
     def read_pdf(book_id):
         book = Book.query.get_or_404(book_id)
-        if book.category != "pdf":
+        if not book.file_type or book.file_type.lower() != 'pdf':
             flash("این کتاب PDF نیست.", "danger")
             return redirect(url_for('books'))
 
@@ -1560,32 +1592,23 @@ def create_app():
             if not user_has_access(book):
                 return "برای مشاهده‌ی این کتاب باید ابتدا آن را خریداری کنید.", 403
 
-            # Determine the file path based on file type
-            if book.file_type.lower() == 'pdf':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'pdf', book.pdf_filename)
-                mime_type = 'application/pdf'
-            elif book.file_type.lower() == 'txt':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'txt', book.pdf_filename)
-                mime_type = 'text/plain; charset=utf-8'
-            elif book.file_type.lower() == 'epub':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'epub', book.pdf_filename)
-                mime_type = 'application/epub+zip'
-            else:
+            file_path = get_book_file_path(book)
+            if not file_path:
                 return "فرمت فایل پشتیبانی نمی‌شود", 400
-                
-            # Verify the file exists
+
+            mime_type = get_mime_for_book_type(book.file_type)
+
             if not os.path.exists(file_path):
                 app.logger.error(f"File not found: {file_path}")
                 return "فایل یافت نشد", 404
-                
-            # Send the file with appropriate headers
+
             return send_file(
                 file_path,
                 mimetype=mime_type,
                 as_attachment=False,
                 download_name=book.pdf_filename
             )
-            
+
         except Exception as e:
             app.logger.error(f"Error serving book file {book_id}: {str(e)}")
             return str(e), 500
@@ -1676,6 +1699,15 @@ def create_app():
             flash('این پرداخت قبلاً تایید شده است.', 'info')
             return redirect(url_for('my_purchases'))
 
+        # دفاع عمیق‌تر: اگر کاربری session فعال دارد، حتماً باید مالک خرید باشد.
+        # در حالت عادی کاربر از درگاه به همین صفحه هدایت می‌شود و session فعال است.
+        if current_user.is_authenticated and purchase.user_id != current_user.id:
+            app.logger.warning(
+                f"کاربر {current_user.id} تلاش تایید پرداخت purchase={purchase_id} "
+                f"(متعلق به کاربر {purchase.user_id}) را داشت."
+            )
+            abort(403)
+
         gateway = get_gateway(app.config)
 
         if gateway.name == 'sandbox':
@@ -1725,6 +1757,8 @@ def create_app():
         return render_template('admin_sales.html', purchases=purchases, total_revenue=total_revenue)
 
     @app.route('/advanced-reports')
+    @login_required
+    @admin_required
     def admin_advanced_reports():
         graph_data = {
             "data": [{"x": [1, 2, 3], "y": [4, 5, 6], "type": "scatter"}],
@@ -1767,20 +1801,11 @@ def create_app():
                 progress.last_opened = datetime.utcnow()
                 db.session.commit()
             
-            # Determine the file path based on file type
-            if book.file_type.lower() == 'pdf':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'pdf', book.pdf_filename)
-            elif book.file_type.lower() == 'txt':
-                # pdf_filename نگه‌دارنده‌ی نام واقعی فایل روی دیسکه (چه برای pdf چه txt
-                # چه epub) — نه book.content که محتوای متنی کتابه. استفاده از content
-                # به‌عنوان مسیر فایل باعث می‌شد کتاب‌های آپلودی txt همیشه FileNotFound بدن.
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'txt', book.pdf_filename)
-                app.logger.info(f"Looking for text file at: {file_path}")
-                app.logger.info(f"Current working directory: {os.getcwd()}")
-                app.logger.info(f"File exists: {os.path.exists(file_path)}")
-            else:
+            file_path = get_book_file_path(book)
+            if not file_path:
                 flash('فرمت فایل پشتیبانی نمی‌شود', 'error')
                 return redirect(url_for('books'))
+            app.logger.info(f"Looking for book file at: {file_path} (exists={os.path.exists(file_path)})")
                 
             # Verify the file exists
             if not os.path.exists(file_path):
@@ -1893,6 +1918,34 @@ def create_app():
             flash('خطا در نمایش کتاب', 'error')
             return redirect(url_for('books'))
             
+    def _save_progress_logic(user_id, book_id, position, total_pages=None, mark_completed=False):
+        """منطق مشترک ذخیره پیشرفت، برای استفاده از هر دو مسیر form و JSON."""
+        progress = ReadingProgress.query.filter_by(
+            user_id=user_id,
+            book_id=book_id
+        ).first()
+
+        if not progress:
+            progress = ReadingProgress(
+                user_id=user_id,
+                book_id=book_id,
+                position=position,
+                total_pages=total_pages or 1,
+                last_opened=datetime.utcnow(),
+                completed=mark_completed
+            )
+            db.session.add(progress)
+        else:
+            progress.position = position
+            if total_pages and total_pages > 0:
+                progress.total_pages = total_pages
+            if mark_completed:
+                progress.completed = True
+            progress.last_opened = datetime.utcnow()
+
+        db.session.commit()
+        return progress
+
     @app.route('/save_text_progress/<int:book_id>', methods=['POST'])
     @login_required
     def save_text_progress(book_id):
@@ -1905,35 +1958,14 @@ def create_app():
             position = request.form.get('position', type=int) or 1
             total_pages = request.form.get('total_pages', type=int)
             mark_completed = request.form.get('mark_completed', 'false').lower() == 'true'
-            
-            progress = ReadingProgress.query.filter_by(
+
+            progress = _save_progress_logic(
                 user_id=current_user.id,
-                book_id=book_id
-            ).first()
-
-            if not progress:
-                progress = ReadingProgress(
-                    user_id=current_user.id,
-                    book_id=book_id,
-                    position=position,
-                    total_pages=total_pages or 1,
-                    last_opened=datetime.utcnow(),
-                    completed=mark_completed
-                )
-                db.session.add(progress)
-            else:
-                progress.position = position
-                if total_pages and total_pages > 0:
-                    progress.total_pages = total_pages
-                
-                if mark_completed:
-                    progress.completed = True
-                    progress.last_opened = datetime.utcnow()
-                else:
-                    progress.last_opened = datetime.utcnow()
-
-            db.session.commit()
-            
+                book_id=book_id,
+                position=position,
+                total_pages=total_pages,
+                mark_completed=mark_completed,
+            )
             return jsonify({
                 'success': True,
                 'position': progress.position,
@@ -1943,6 +1975,77 @@ def create_app():
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error saving progress: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/save_reading_progress', methods=['POST'])
+    @login_required
+    def api_save_reading_progress():
+        """ذخیره پیشرفت با JSON body (هماهنگ با pdf_viewer.js)."""
+        try:
+            data = request.get_json(silent=True) or {}
+            book_id = data.get('book_id')
+            position = int(data.get('position', 1) or 1)
+            total_pages = data.get('total_pages')
+            if total_pages is not None:
+                total_pages = int(total_pages)
+            mark_completed = str(data.get('mark_completed', 'false')).lower() == 'true'
+
+            if not book_id:
+                return jsonify({'success': False, 'error': 'book_id الزامی است'}), 400
+
+            progress = _save_progress_logic(
+                user_id=current_user.id,
+                book_id=int(book_id),
+                position=position,
+                total_pages=total_pages,
+                mark_completed=mark_completed,
+            )
+            return jsonify({
+                'success': True,
+                'position': progress.position,
+                'total_pages': progress.total_pages,
+                'completed': progress.completed
+            })
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error in api_save_reading_progress: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    @app.route('/api/get_reading_progress')
+    @login_required
+    def api_get_reading_progress():
+        """دریافت پیشرفت ذخیره‌شده یک کتاب برای کاربر جاری."""
+        try:
+            book_id = request.args.get('book_id', type=int)
+            if not book_id:
+                return jsonify({'success': False, 'error': 'book_id الزامی است'}), 400
+
+            Book.query.get_or_404(book_id)
+
+            progress = ReadingProgress.query.filter_by(
+                user_id=current_user.id,
+                book_id=book_id
+            ).first()
+
+            if not progress:
+                return jsonify({
+                    'success': True,
+                    'book_id': book_id,
+                    'position': 0,
+                    'total_pages': 0,
+                    'completed': False
+                })
+
+            return jsonify({
+                'success': True,
+                'book_id': book_id,
+                'position': progress.position,
+                'total_pages': progress.total_pages,
+                'completed': progress.completed,
+                'last_opened': progress.last_opened.isoformat() if progress.last_opened else None
+            })
+        except Exception as e:
+            app.logger.error(f"Error in api_get_reading_progress: {str(e)}")
             return jsonify({'success': False, 'error': str(e)}), 500
             
     # In app.py, update the add_bookmark route:
@@ -2065,14 +2168,14 @@ def create_app():
     @login_required
     def new_books():
         # Get new books since last check
-        last_checked = current_user.last_checked_books or datetime.min.replace(tzinfo=timezone.utc)
-        new_books = Book.query.filter(Book.created_at > last_checked).all()
+        last_checked = _strip_tz(current_user.last_checked_books)
+        new_books_list = Book.query.filter(Book.created_at > last_checked).all()
 
         # Update the last checked time
         current_user.last_checked_books = datetime.utcnow()
         db.session.commit()
 
-        return render_template('new_books.html', new_books=new_books)
+        return render_template('new_books.html', new_books=new_books_list)
 
 
     # ---------- نشانک ----------
@@ -2210,54 +2313,42 @@ def create_app():
     @login_required
     def serve_pdf(filename):
         try:
-            # Decode URL-encoded filename
             from urllib.parse import unquote
             filename = unquote(filename)
-            
-            # Security check: Prevent directory traversal
+
             if '..' in filename or filename.startswith('/'):
                 flash('مسیر فایل نامعتبر است', 'error')
                 return redirect(url_for('books'))
-            
-            # Try to find the file directly first (for backward compatibility)
+
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            
-            # If file not found, try to look it up by original_filename
+
             if not os.path.exists(filepath):
-                try:
-                    # Try to find by original_filename
-                    book = Book.query.filter_by(original_filename=filename).first()
-                    if book and book.pdf_filename:
-                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], book.pdf_filename)
-                except Exception as e:
-                    # If there's an error (like column doesn't exist), just continue with the original filename
-                    app.logger.warning(f"Could not look up by original_filename: {str(e)}")
-            
-            # بررسی نهایی: مسیر واقعی فایل باید داخل UPLOAD_FOLDER باشه (دفاع
-            # لایه‌ی دوم در برابر directory traversal، مثل الگوی show_cover؛
-            # چک بالا فقط جلوی '..' رو می‌گیره ولی این چک تضمین می‌کنه هر
-            # مسیر نهایی حتماً داخل پوشه‌ی مجاز باقی می‌مونه)
+                ft_dirs = ['pdf', 'txt', 'epub']
+                for d in ft_dirs:
+                    alt = os.path.join(app.config['UPLOAD_FOLDER'], 'books', d, filename)
+                    if os.path.exists(alt):
+                        filepath = alt
+                        break
+
             expected_upload_dir = os.path.abspath(app.config['UPLOAD_FOLDER'])
             resolved_path = os.path.abspath(filepath)
             if not resolved_path.startswith(expected_upload_dir + os.sep):
                 app.logger.warning(f"تلاش برای دسترسی خارج از پوشه‌ی مجاز: {filename}")
                 flash('مسیر فایل نامعتبر است', 'error')
                 return redirect(url_for('books'))
-            
-            # Final check if file exists
+
             if not os.path.exists(filepath):
                 app.logger.error(f"فایل یافت نشد: {filename}")
                 flash('فایل مورد نظر یافت نشد', 'error')
                 return redirect(url_for('books'))
-            
-            # Send the file
+
             return send_file(
                 filepath,
                 as_attachment=False,
-                download_name=os.path.basename(filename),  # Use the requested filename for download
+                download_name=os.path.basename(filename),
                 mimetype='application/pdf'
             )
-                
+
         except Exception as e:
             app.logger.error(f"خطا در سرویس‌دهی فایل: {str(e)}", exc_info=True)
             flash('خطا در نمایش فایل', 'error')
@@ -2299,32 +2390,21 @@ def create_app():
             return redirect(url_for('books'))
             
         try:
-            # Determine the file path based on file type
-            if book.file_type.lower() == 'pdf':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'pdf', book.pdf_filename)
-                mime_type = 'application/pdf'
-            elif book.file_type.lower() == 'txt':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'txt', book.pdf_filename)
-                mime_type = 'text/plain; charset=utf-8'
-            elif book.file_type.lower() == 'epub':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'books', 'epub', book.pdf_filename)
-                mime_type = 'application/epub+zip'
-            else:
+            file_path = get_book_file_path(book)
+            if not file_path:
                 flash('فرمت فایل پشتیبانی نمی‌شود', 'error')
                 return redirect(url_for('books'))
-                
-            # Verify the file exists
+
+            mime_type = get_mime_for_book_type(book.file_type)
+
             if not os.path.exists(file_path):
                 flash('فایل مورد نظر یافت نشد', 'error')
                 return redirect(url_for('books'))
-                
-            # Clean the title to create a safe filename
+
             safe_title = re.sub(r'[^\w\s-]', '', book.title).strip()
             safe_title = re.sub(r'[-\s]+', '-', safe_title)
-            
-            # Determine the download filename
             download_filename = f"{safe_title}.{book.file_type}"
-            
+
             return send_file(
                 file_path,
                 as_attachment=True,
@@ -2345,59 +2425,35 @@ def create_app():
             return redirect(url_for('books'))
             
         book = Book.query.get_or_404(book_id)
-        
-        # Create a custom form without the file upload field
-        class EditBookForm(FlaskForm):
-            title = StringField('عنوان کتاب', validators=[DataRequired()])
-            author = StringField('نویسنده', validators=[DataRequired()])
-            category = SelectField('دسته‌بندی', choices=[
-                ('general', 'عمومی'),
-                ('novel', 'رمان'),
-                ('science', 'علمی'),
-                ('history', 'تاریخی'),
-                ('religion', 'مذهبی'),
-                ('historical_religious', 'تاریخی مذهبی')
-            ])
-            price = IntegerField('قیمت (تومان) — برای رایگان بودن، صفر بگذارید', default=0,
-                                  validators=[Optional(), NumberRange(min=0, message='قیمت نمی‌تواند منفی باشد')])
-            cover = FileField('تصویر جلد (اختیاری)', validators=[
-                FileAllowed(['jpg', 'jpeg', 'png'], 'فقط تصاویر مجاز هستند!')
-            ])
-            submit = SubmitField('ذخیره تغییرات')
-        
-        form = EditBookForm()
-        
+
+        form = EditBookForm(obj=book)
+
         if form.validate_on_submit():
             try:
-                # Update basic info
                 book.title = form.title.data
                 book.author = form.author.data
                 book.category = form.category.data
                 book.price = form.price.data or 0
-                
-                # Handle cover image upload if a new one is provided
-                if form.cover.data and form.cover.data.filename:  # Check if a file was actually selected
-                    # Remove old cover if exists
+
+                if form.cover.data and getattr(form.cover.data, 'filename', None):
                     if book.cover_filename and os.path.exists(os.path.join(app.config['COVER_FOLDER'], book.cover_filename)):
                         try:
                             os.remove(os.path.join(app.config['COVER_FOLDER'], book.cover_filename))
                         except Exception as e:
                             app.logger.error(f'Error removing old cover image: {str(e)}')
-                    
-                    # Save new cover
+
                     cover_file = form.cover.data
                     cover_ext = os.path.splitext(cover_file.filename)[1].lower()
                     cover_filename = f"{uuid.uuid4().hex}{cover_ext}"
                     cover_path = os.path.join(app.config['COVER_FOLDER'], cover_filename)
-                    
-                    # Resize and save the image
+
                     from PIL import Image
                     img = Image.open(cover_file)
-                    img.thumbnail((300, 400))  # Resize while maintaining aspect ratio
+                    img.thumbnail((300, 400))
                     img.save(cover_path)
-                    
+
                     book.cover_filename = cover_filename
-                
+
                 db.session.commit()
                 flash('کتاب با موفقیت به‌روزرسانی شد.', 'success')
                 return redirect(url_for('books'))
@@ -2422,14 +2478,20 @@ def create_app():
             flash('فقط ادمین اجازه حذف دارد.', 'danger')
             return redirect(url_for('books'))
         book = Book.query.get_or_404(book_id)
-        for path, fname in [
-            (os.path.join(app.config['BASE_DIR'],'all_books','pdf'), book.pdf_filename),
-            (os.path.join(app.config['BASE_DIR'],'all_books','txt'), f"{book.title}.txt"),
-            (os.path.join(app.config['BASE_DIR'],'all_books','covers'), book.cover_filename)
-        ]:
+
+        paths_to_check = []
+        book_file_path = get_book_file_path(book)
+        if book_file_path:
+            paths_to_check.append((os.path.dirname(book_file_path), os.path.basename(book_file_path)))
+        paths_to_check.append((app.config['COVER_FOLDER'], book.cover_filename))
+        paths_to_check.append((os.path.join(app.config['BASE_DIR'], 'all_books', 'pdf'), book.pdf_filename))
+        paths_to_check.append((os.path.join(app.config['BASE_DIR'], 'all_books', 'txt'), f"{book.title}.txt"))
+        paths_to_check.append((os.path.join(app.config['BASE_DIR'], 'all_books', 'covers'), book.cover_filename))
+
+        for dir_path, fname in paths_to_check:
             try:
-                if fname and os.path.exists(os.path.join(path, fname)):
-                    os.remove(os.path.join(path, fname))
+                if fname and dir_path and os.path.exists(os.path.join(dir_path, fname)):
+                    os.remove(os.path.join(dir_path, fname))
             except Exception:
                 pass
         ReadingProgress.query.filter_by(book_id=book_id).delete()
@@ -2623,9 +2685,6 @@ def create_app():
             ).count()
             daily_reads.append(count)
             date_labels.append(date.strftime('%Y-%m-%d'))
-
-        # Generate charts
-        gen_charts(app.config['BASE_DIR'])
 
         return render_template('admin_dashboard.html',
                         users=total_users,
@@ -3345,6 +3404,8 @@ def create_app():
         )
 
     @app.route('/download_report')
+    @login_required
+    @admin_required
     def download_report():
         return admin_export_excel()
 

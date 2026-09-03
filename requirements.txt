@@ -7,14 +7,14 @@ colorama==0.4.6
 contourpy==1.3.3
 cycler==0.12.1
 et_xmlfile==2.0.0
-Flask==2.2.5
-Flask-Login==0.6.2
+Flask==2.3.3
+Flask-Login==0.6.3
 Flask-Migrate==4.1.0
 Flask-SQLAlchemy==3.1.1
-Flask-WTF==1.1.1
+Flask-WTF==1.2.2
 fonttools==4.60.1
 greenlet==3.2.4
-itsdangerous==2.1.2
+itsdangerous==2.2.0
 Jinja2==3.1.6
 kiwisolver==1.4.9
 Mako==1.3.10
@@ -39,8 +39,8 @@ scipy==1.13.1
 six==1.16.0
 SQLAlchemy==2.0.28
 typing_extensions==4.12.2
-Werkzeug==2.2.3
-WTForms==3.1.2
+Werkzeug==2.3.7
+WTForms==3.2.1
 hazm
 PyPDF2
 reportlab
@@ -54,6 +54,9 @@ flask-limiter
 plotly
 Flask-Paginate
 python-dotenv
+easyocr
+beautifulsoup4
+Pillow
 
 # ---------- استقرار در production (اختیاری برای توسعه‌ی محلی) ----------
 # psycopg2-binary: درایور PostgreSQL — فقط وقتی DATABASE_URL روی postgresql:// باشه لازمه

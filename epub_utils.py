@@ -1,19 +1,19 @@
 import os
+import tempfile
 import zipfile
+import shutil
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
 class EPUBReader:
     def __init__(self, file_path):
         self.file_path = file_path
-        self.temp_dir = "temp_epub_extract"
+        self.temp_dir = None
         self.content = {}
-        
+
     def extract_epub(self):
-        """Extract EPUB file to a temporary directory"""
-        if not os.path.exists(self.temp_dir):
-            os.makedirs(self.temp_dir)
-            
+        """Extract EPUB file to a unique temporary directory"""
+        self.temp_dir = tempfile.mkdtemp(prefix="epub_")
         with zipfile.ZipFile(self.file_path, 'r') as zip_ref:
             zip_ref.extractall(self.temp_dir)
     
@@ -105,8 +105,7 @@ class EPUBReader:
             
         finally:
             # Clean up temporary files
-            if os.path.exists(self.temp_dir):
-                import shutil
+            if self.temp_dir and os.path.exists(self.temp_dir):
                 shutil.rmtree(self.temp_dir)
 
 # Helper function to detect if a file is an EPUB
